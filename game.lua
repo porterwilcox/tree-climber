@@ -8,7 +8,7 @@ local scene = composer.newScene()
 -- the scene is removed entirely (not recycled) via "composer.removeScene()"
 -- -----------------------------------------------------------------------------------
 
-local GameState = require("states.GameState")
+-- local GameState = require("states.GameState")
 local Monkey = require("models.Monkey")
 local Branch = require("models.Branch")
 
@@ -21,7 +21,7 @@ local uiGroup
 local backgroundGroup
 local treeGroup
 
-local gs = GameState:new()
+-- local gs = GameState:new()
 local monkey
 local branches = {}
 
