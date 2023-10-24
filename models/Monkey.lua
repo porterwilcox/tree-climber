@@ -1,13 +1,15 @@
 local phyics = require("physics")
 physics.start()
 
--- local GameState = require("states.GameState")
--- local gameState = GameState:new()
+local GameState = require("states.GameState")
+local gs = GameState:new()
 
 local Monkey = {}
 Monkey.__index = Monkey
 
 local id = 1
+
+local lastBranchSwungFrom
 
 local function onCollision( event )
     local monkey = event.target
@@ -37,6 +39,7 @@ function Monkey:new( group )
     monkey.name = "monkey"
     monkey.bananaCount = 0
     monkey.swingableBranches = {}
+    monkey.swinging = false
     id = id + 1
     local self = setmetatable({ _ref = monkey }, Monkey)
     return self
@@ -47,6 +50,8 @@ function Monkey:swing()
 
     local branch = monkey.swingableBranches[#monkey.swingableBranches]
     if (branch == nil) then return end
+
+    lastBranchSwungFrom = branch
 
     monkey.swinging = true
 
@@ -63,6 +68,16 @@ function Monkey:swing()
             pivotJoint.motorSpeed = pivotJoint.motorSpeed * -1
         end
     end, 1)
+end
+
+function Monkey:setPivotJointMotorTorque(x)
+    local monkey = self._ref
+    local pivotJoint = monkey.pivotJoint
+    if (not monkey.swinging or pivotJoint == nil) then return end
+
+    local distance = display.contentCenterX - x
+    local torqueAdjustment = math.ceil(distance / 36)
+    pivotJoint.maxMotorTorque = 10 - torqueAdjustment
 end
 
 function Monkey:release()

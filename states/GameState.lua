@@ -26,3 +26,5 @@ end
 function GameState:addTableMember(property, value)
     table.insert(state[property], value)
 end
+
+return GameState

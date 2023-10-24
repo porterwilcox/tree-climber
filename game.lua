@@ -8,7 +8,7 @@ local scene = composer.newScene()
 -- the scene is removed entirely (not recycled) via "composer.removeScene()"
 -- -----------------------------------------------------------------------------------
 
--- local GameState = require("states.GameState")
+local GameState = require("states.GameState")
 local Monkey = require("models.Monkey")
 local Branch = require("models.Branch")
 
@@ -21,35 +21,33 @@ local uiGroup
 local backgroundGroup
 local treeGroup
 
--- local gs = GameState:new()
-local monkey
-local branches = {}
+local gs = GameState:new()
 
 local function initBranch()
 	local branch = Branch:new( treeGroup, display.contentCenterX, 600 )
-	table.insert(branches, branch)
+	gs:addTableMember("branches", branch)
 
 	branch = Branch:new( treeGroup, 90, 200 )
-	table.insert(branches, branch)
+	gs:addTableMember("branches", branch)
 
 	branch = Branch:new( treeGroup, 270, 200 )
-	table.insert(branches, branch)
+	gs:addTableMember("branches", branch)
 
 end
 
 local function initMonkey()
-	monkey = Monkey:new(treeGroup)
+	local monkey = Monkey:new(treeGroup)
+	gs:setState("monkey", monkey)
 end
 
-local isSwinging = false
-local pivotJoint = nil
-local anchor = nil
-local first = true
 local function startSwing(event)
     if event.phase == "began" then
-		monkey:swing()
+		gs:getState("monkey"):swing()
+		-- gs:getState("monkey"):setPivotJointMotorTorque(event.x)
+	elseif event.phase == "moved" then
+		gs:getState("monkey"):setPivotJointMotorTorque(event.x)
     elseif event.phase == "ended" then
-		monkey:release()
+		gs:getState("monkey"):release()
     end
 end
 Runtime:addEventListener("touch", startSwing)
@@ -65,6 +63,15 @@ function scene:create( event )
 
     uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
+
+	local restartText = display.newText(uiGroup, "Restart", 40, 40, native.systemFont, 10)
+	restartText:addEventListener("touch", function(event)
+		if (event.phase == "ended") then
+			gs:getState("monkey")._ref:removeSelf()
+			initMonkey()
+		end
+		return true
+	end)
 
 	backgroundGroup = display.newGroup()
 	sceneGroup:insert(backgroundGroup)
