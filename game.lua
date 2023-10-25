@@ -40,14 +40,30 @@ local function initMonkey()
 	gs:setState("monkey", monkey)
 end
 
+local function restart()
+	gs:getState("monkey")._ref:removeSelf()
+	initMonkey()
+end
+
+local monkeyOnScreenCheckTimerId
 local function startSwing(event)
     if event.phase == "began" then
+		if monkeyOnScreenCheckTimerId ~= nil then 
+			timer.cancel(monkeyOnScreenCheckTimerId) 
+			monkeyOnScreenCheckTimerId = nil
+		end
 		gs:getState("monkey"):swing()
-		-- gs:getState("monkey"):setPivotJointMotorTorque(event.x)
 	elseif event.phase == "moved" then
 		gs:getState("monkey"):setPivotJointMotorTorque(event.x)
     elseif event.phase == "ended" then
 		gs:getState("monkey"):release()
+		monkeyOnScreenCheckTimerId = timer.performWithDelay( 100, function()
+			if (gs:getState("monkey"):isOffScreen()) then
+				timer.cancel(monkeyOnScreenCheckTimerId) 
+				monkeyOnScreenCheckTimerId = nil
+				restart()
+			end
+		end, 0 )
     end
 end
 Runtime:addEventListener("touch", startSwing)
@@ -63,15 +79,6 @@ function scene:create( event )
 
     uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
-
-	local restartText = display.newText(uiGroup, "Restart", 40, 40, native.systemFont, 10)
-	restartText:addEventListener("touch", function(event)
-		if (event.phase == "ended") then
-			gs:getState("monkey")._ref:removeSelf()
-			initMonkey()
-		end
-		return true
-	end)
 
 	backgroundGroup = display.newGroup()
 	sceneGroup:insert(backgroundGroup)

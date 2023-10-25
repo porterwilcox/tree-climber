@@ -62,9 +62,13 @@ function Monkey:swing()
     monkey.pivotJoint = pivotJoint
 
     -- Could be improved to mimic real physics per swing direction better
-    local previousVelocity = monkey.angularVelocity
+    -- local previousAngularVelocity = monkey.angularVelocity
+    local vx, vy = monkey:getLinearVelocity()
+    local previousLinearVelocity = math.abs(vx) + math.abs(vy)
     timer.performWithDelay( 20, function() 
-        if (monkey.angularVelocity < previousVelocity) then
+        local vx, vy = monkey:getLinearVelocity()
+        local currentLinearVelocity = math.abs(vx) + math.abs(vy)
+        if ( currentLinearVelocity < previousLinearVelocity) then
             pivotJoint.motorSpeed = pivotJoint.motorSpeed * -1
         end
     end, 1)
@@ -82,15 +86,12 @@ end
 
 function Monkey:release()
     local monkey = self._ref
+    monkey.angularVelocity = monkey.angularVelocity * 3  --easy way to manipulate how far the monkey flys
 
     if (monkey.swinging == false) then return end
 
     monkey.swinging = false
-
     monkey.gravityScale = 1
-    local xForce = 5 * math.sin(monkey.rotation)
-    local yForce = -1 * math.cos(monkey.rotation)
-    monkey:applyForce(xForce, yForce, monkey.x, monkey.y)
 
     self:removePivotJoint()
 end
@@ -102,6 +103,34 @@ function Monkey:removePivotJoint()
         monkey.pivotJoint:removeSelf()
         monkey.pivotJoint = nil
     end
+end
+
+function Monkey:isOffScreen()
+    local monkey = self._ref
+
+    if (monkey.swinging) then return false end
+    
+    -- Check off left
+    if (monkey.x + monkey.width * 0.5) < 0 then
+        return true
+    end
+
+    -- Check off right
+    if (monkey.x - monkey.width * 0.5) > display.contentWidth then
+        return true
+    end
+
+    -- Check off top
+    -- if (monkey.y + monkey.height * 0.5) < 0 then
+    --     return true
+    -- end
+
+    -- Check off bottom
+    if (monkey.y - monkey.height * 0.5) > display.contentHeight then
+        return true
+    end
+
+    return false
 end
 
 return Monkey
