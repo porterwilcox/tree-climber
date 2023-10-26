@@ -1,6 +1,7 @@
 local state = {
-    monkey = nil,
-    branches = {},
+    treeGroup = nil,
+    character = nil,
+    anchors = {},
 }
 
 local GameState = {}

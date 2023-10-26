@@ -9,8 +9,8 @@ local scene = composer.newScene()
 -- -----------------------------------------------------------------------------------
 
 local GameState = require("states.GameState")
-local Monkey = require("models.Monkey")
-local Branch = require("models.Branch")
+local Character = require("models.Character")
+local Anchor = require("models.Anchor")
 
 local phyics = require("physics")
 physics.start()
@@ -23,47 +23,53 @@ local treeGroup
 
 local gs = GameState:new()
 
-local function initBranch()
-	local branch = Branch:new( treeGroup, display.contentCenterX, 600 )
-	gs:addTableMember("branches", branch)
+local flightMonitorTimerId
 
-	branch = Branch:new( treeGroup, 90, 200 )
-	gs:addTableMember("branches", branch)
+local function initAnchor()
+	local anchor = Anchor:new( treeGroup, display.contentCenterX, 600 )
+	gs:addTableMember("anchors", anchor)
 
-	branch = Branch:new( treeGroup, 270, 200 )
-	gs:addTableMember("branches", branch)
+	anchor = Anchor:new( treeGroup, 90, 200 )
+	gs:addTableMember("anchors", anchor)
 
 end
 
-local function initMonkey()
-	local monkey = Monkey:new(treeGroup)
-	gs:setState("monkey", monkey)
+local function initCharacter()
+	local character = Character:new(treeGroup)
+	gs:setState("character", character)
 end
 
 local function restart()
-	gs:getState("monkey")._ref:removeSelf()
-	initMonkey()
+	gs:getState("character")._ref:removeSelf()
+	initCharacter()
 end
 
-local monkeyOnScreenCheckTimerId
+local function monitorFlight()
+	flightMonitorTimerId = timer.performWithDelay( 25, function()
+		if (gs:getState("character"):isOffScreen()) then
+			timer.cancel(flightMonitorTimerId) 
+			flightMonitorTimerId = nil
+			restart()
+		end
+	end, 0 )
+end
+
+local function flightEnd()
+	if flightMonitorTimerId ~= nil then 
+		timer.cancel(flightMonitorTimerId) 
+		flightMonitorTimerId = nil
+	end
+end
+
 local function startSwing(event)
     if event.phase == "began" then
-		if monkeyOnScreenCheckTimerId ~= nil then 
-			timer.cancel(monkeyOnScreenCheckTimerId) 
-			monkeyOnScreenCheckTimerId = nil
-		end
-		gs:getState("monkey"):swing()
+		flightEnd()
+		gs:getState("character"):swing()
 	elseif event.phase == "moved" then
-		gs:getState("monkey"):setPivotJointMotorTorque(event.x)
+		gs:getState("character"):setPivotJointMotorTorque(event.x)
     elseif event.phase == "ended" then
-		gs:getState("monkey"):release()
-		monkeyOnScreenCheckTimerId = timer.performWithDelay( 100, function()
-			if (gs:getState("monkey"):isOffScreen()) then
-				timer.cancel(monkeyOnScreenCheckTimerId) 
-				monkeyOnScreenCheckTimerId = nil
-				restart()
-			end
-		end, 0 )
+		gs:getState("character"):release()
+		monitorFlight()
     end
 end
 Runtime:addEventListener("touch", startSwing)
@@ -84,6 +90,7 @@ function scene:create( event )
 	sceneGroup:insert(backgroundGroup)
 
 	treeGroup = display.newGroup()
+	gs:setState("treeGroup", treeGroup)
 	sceneGroup:insert(treeGroup)
 
 end
@@ -100,8 +107,8 @@ function scene:show( event )
 	elseif ( phase == "did" ) then
 		-- Code here runs when the scene is entirely on screen
 
-		initBranch()
-		initMonkey()
+		initAnchor()
+		initCharacter()
 
 	end
 end
