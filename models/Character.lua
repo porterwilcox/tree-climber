@@ -98,7 +98,6 @@ function Character:release()
     if (character.swinging == false) then return end
 
     character.swinging = false
-    character.gravityScale = 1
 
     self:manageAnchors()
     self:removePivotJoint()
