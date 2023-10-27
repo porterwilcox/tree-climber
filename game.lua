@@ -9,37 +9,60 @@ local scene = composer.newScene()
 -- -----------------------------------------------------------------------------------
 
 local GameState = require("states.GameState")
-local Character = require("models.Character")
+local Building = require("models.Building")
 local Anchor = require("models.Anchor")
+local Character = require("models.Character")
 
 local phyics = require("physics")
 physics.start()
 physics.setGravity( 0, 9.8 )
-physics.setDrawMode( "hybrid" )
+-- physics.setDrawMode( "hybrid" )
 
-local uiGroup
 local backgroundGroup
-local treeGroup
+local uiGroup
+local gameGroup
+local characterGroup
 
 local gs = GameState:new()
 
 local flightMonitorTimerId
 
+local function initBuilding()
+	local building = Building:new( gameGroup, display.contentHeight - 100 )
+	gs:addTableMember("buildings", building)
+
+	local building = Building:new( gameGroup, display.contentCenterY )
+	gs:addTableMember("buildings", building)
+end
+
 local function initAnchor()
-	local anchor = Anchor:new( treeGroup, display.contentCenterX, 600 )
+	local anchor = Anchor:new( gameGroup, display.contentCenterX, 600 )
 	gs:addTableMember("anchors", anchor)
 
-	anchor = Anchor:new( treeGroup, 90, 200 )
+	anchor = Anchor:new( gameGroup, 90, 200 )
 	gs:addTableMember("anchors", anchor)
 
 end
 
 local function initCharacter()
-	local character = Character:new(treeGroup)
+	local character = Character:new(characterGroup)
 	gs:setState("character", character)
 end
 
 local function restart()
+	-- remove all the buildings
+	local buildings = gs:getState("buildings")
+	for i = 1, #buildings do
+		-- remove anchors
+		local anchors = buildings[i]._ref.anchors
+		for j = 1, #anchors do
+			anchors[j]._ref:removeSelf()
+		end
+		buildings[i]._ref:removeSelf()
+	end
+	gs:setState("buildings", {})
+	initBuilding()
+
 	gs:getState("character")._ref:removeSelf()
 	initCharacter()
 end
@@ -83,16 +106,21 @@ function scene:create( event )
 	local sceneGroup = self.view
 	-- Code here runs when the scene is first created but has not yet appeared on screen
 
-    uiGroup = display.newGroup()
-	sceneGroup:insert(uiGroup)
-
 	backgroundGroup = display.newGroup()
 	sceneGroup:insert(backgroundGroup)
 
-	treeGroup = display.newGroup()
-	gs:setState("treeGroup", treeGroup)
-	sceneGroup:insert(treeGroup)
+	local backgroundColor = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
+	backgroundColor:setFillColor( 30/255, 30/255, 30/255 )
 
+    uiGroup = display.newGroup()
+	sceneGroup:insert(uiGroup)
+
+	gameGroup = display.newGroup()
+	gs:setState("gameGroup", gameGroup)
+	sceneGroup:insert(gameGroup)
+
+	characterGroup = display.newGroup()
+	sceneGroup:insert(characterGroup)
 end
 
 
@@ -107,7 +135,8 @@ function scene:show( event )
 	elseif ( phase == "did" ) then
 		-- Code here runs when the scene is entirely on screen
 
-		initAnchor()
+		initBuilding()
+		-- initAnchor()
 		initCharacter()
 
 	end

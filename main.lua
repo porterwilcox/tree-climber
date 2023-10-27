@@ -18,4 +18,4 @@ audio.reserveChannels( 1 )
 audio.setVolume( 0.2, { channel=1 } ) 
  
 -- Go to the menu screen
-composer.gotoScene( "menu" )
+composer.gotoScene( "game" )

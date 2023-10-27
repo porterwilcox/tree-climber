@@ -4,7 +4,7 @@ physics.start()
 local GameState = require("states.GameState")
 local gs = GameState:new()
 
-local Anchor = require("models.Anchor")
+local Building = require("models.Building")
 
 local Character = {}
 Character.__index = Character
@@ -70,12 +70,12 @@ function Character:swing()
     character.pivotJoint = pivotJoint
 
     if (anchor.y < display.contentHeight * 0.5) then
-        local anchor = Anchor:new( gs:getState("treeGroup"), math.random(100, display.contentWidth - 100), math.random(-120, -5) )
-        gs:addTableMember("anchors", anchor)
+        local building = Building:new( gs:getState("gameGroup"), 100 )
+        gs:addTableMember("buildings", building)
 
-        local anchors = gs:getState("anchors")
-        for i = 1, #anchors do
-            anchors[i]:MoveDownward(display.contentHeight / 2.5)
+        local buildings = gs:getState("buildings")
+        for i = 1, #buildings do
+            buildings[i]:MoveDownward(display.contentHeight / 2.5)
         end
     end
 end
@@ -99,11 +99,11 @@ function Character:release()
 
     character.swinging = false
 
-    self:manageAnchors()
+    self:manageBuildings()
     self:removePivotJoint()
 end
 
-function Character:manageAnchors()
+function Character:manageBuildings()
     local character = self._ref
 
     local vx, vy = character:getLinearVelocity()
@@ -112,9 +112,10 @@ function Character:manageAnchors()
 
     if (releaseAngle > -2.1 and releaseAngle < -0.9 and releaseSpeed > 300) then -- move anchors and create a new one
 
-        -- create a new anchor at a random x position at a random y position between 5 and 80 units above the top of the screen
-        local anchor = Anchor:new( gs:getState("treeGroup"), math.random(100, display.contentWidth - 100), math.random(-120, -5) )
-        gs:addTableMember("anchors", anchor)
+        local randomNumber = math.random(100, 200)
+        print("randomNumber: " .. randomNumber)
+        local building = Building:new( gs:getState("gameGroup"),  randomNumber)
+        gs:addTableMember("buildings", building)
 
         local unitsToMove = 80;
         if (releaseSpeed > 500) then
@@ -138,10 +139,10 @@ function Character:manageAnchors()
 
         unitsToMove = unitsToMove * magnifier;
 
-        local anchors = gs:getState("anchors")
+        local buildings = gs:getState("buildings")
 
-        for i = 1, #anchors do
-            anchors[i]:MoveDownward(unitsToMove)
+        for i = 1, #buildings do
+            buildings[i]:MoveDownward(unitsToMove)
         end
     end
 end

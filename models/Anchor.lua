@@ -8,7 +8,8 @@ local id = 1
 
 function Anchor:new( group, x, y )
     local anchor = display.newCircle( group, x, y, 10 )
-    anchor:setFillColor( 1, 1, 1 )
+    anchor:setFillColor( 1, 169/255, 1/255 )
+    anchor.alpha = 0.5
     physics.addBody(anchor, "static", {radius = 120, isSensor = true})
     
     anchor.id = id

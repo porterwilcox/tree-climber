@@ -1,6 +1,7 @@
 local state = {
-    treeGroup = nil,
+    gameGroup = nil,
     character = nil,
+    buildings = {},
     anchors = {},
 }
 
