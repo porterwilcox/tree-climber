@@ -28,10 +28,24 @@ local gs = GameState:new()
 local flightMonitorTimerId
 
 local function initBuilding()
-	local building = Building:new( gameGroup, display.contentHeight - 100 )
+	local building = Building:new( gameGroup, 0, display.contentHeight, math.random(3, 8) )
+	gs:addTableMember("buildings", building)
+	building = Building:new( gameGroup, 1, display.contentHeight, math.random(3, 8) )
 	gs:addTableMember("buildings", building)
 
-	local building = Building:new( gameGroup, display.contentCenterY )
+	building = Building:new( gameGroup, 0, 0 )
+	gs:addTableMember("buildings", building)
+	building = Building:new( gameGroup, 1, 0 )
+	gs:addTableMember("buildings", building)
+
+	building = Building:new( gameGroup, 0, -display.contentHeight )
+	gs:addTableMember("buildings", building)
+	building = Building:new( gameGroup, 1, -display.contentHeight )
+	gs:addTableMember("buildings", building)
+
+	building = Building:new( gameGroup, 0, -display.contentHeight * 2 )
+	gs:addTableMember("buildings", building)
+	building = Building:new( gameGroup, 1, -display.contentHeight * 2 )
 	gs:addTableMember("buildings", building)
 end
 
@@ -72,7 +86,7 @@ local function monitorFlight()
 		if (gs:getState("character"):isOffScreen()) then
 			timer.cancel(flightMonitorTimerId) 
 			flightMonitorTimerId = nil
-			restart()
+			timer.performWithDelay( 500, restart, 1 )
 		end
 	end, 0 )
 end
@@ -110,7 +124,7 @@ function scene:create( event )
 	sceneGroup:insert(backgroundGroup)
 
 	local backgroundColor = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
-	backgroundColor:setFillColor( 30/255, 30/255, 30/255 )
+	backgroundColor:setFillColor( 52/255, 52/255, 52/255 )
 
     uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
@@ -136,7 +150,6 @@ function scene:show( event )
 		-- Code here runs when the scene is entirely on screen
 
 		initBuilding()
-		-- initAnchor()
 		initCharacter()
 
 	end

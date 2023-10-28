@@ -19,10 +19,10 @@ function Anchor:new( group, x, y )
     return self
 end
 
-function Anchor:MoveDownward(unitsToMove)
+function Anchor:MoveDownward(unitsToMove, ms)
     local anchor = self._ref
 
-    transition.to(anchor, {time = 250, y = anchor.y + unitsToMove})
+    transition.to(anchor, {time = ms, y = anchor.y + unitsToMove})
 end
 
 return Anchor

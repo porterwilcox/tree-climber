@@ -21,19 +21,24 @@ local function onCollision( event )
             local index = table.indexOf( character.swingableAnchors, anchor )
             if (index ~= nil) then table.remove(character.swingableAnchors, index) end
             table.insert(character.swingableAnchors, anchor)
+            if (not character.swinging) then anchor.alpha = 0.8 end
         elseif (event.phase == "ended") then
             local index = table.indexOf( character.swingableAnchors, anchor )
             if (index ~= nil) then table.remove(character.swingableAnchors, index) end
+            anchor.alpha = 0.5
+            if (character.anchor == anchor) then anchor.alpha = 0.8 end
         end
     end
 end
 
 function Character:new( group )
-    local character = display.newCircle( group, display.contentCenterX, -1, 10 )
+    local character = display.newCircle( group, display.contentCenterX, display.contentHeight + 100, 10 )
     character:setFillColor( 0, 1, 0 )
     physics.addBody(character, "dynamic", {radius = character.width/2, bounce = 0.2, density = 1})
     character.gravityScale = 1
     character:addEventListener("collision", onCollision)
+    -- propel upwards like a jolt
+    character:applyLinearImpulse(0, -6, character.x, character.y)
     
     character.id = id
     character.name = "character"
@@ -50,6 +55,7 @@ function Character:swing()
     local anchor = character.swingableAnchors[#character.swingableAnchors]
     if (anchor == nil) then return end
 
+    character.anchor = anchor
     character.swinging = true
 
     local vx, vy = character:getLinearVelocity()
@@ -70,12 +76,14 @@ function Character:swing()
     character.pivotJoint = pivotJoint
 
     if (anchor.y < display.contentHeight * 0.5) then
-        local building = Building:new( gs:getState("gameGroup"), 100 )
-        gs:addTableMember("buildings", building)
+        -- local building = Building:new( gs:getState("gameGroup"), 0, 0 )
+        -- gs:addTableMember("buildings", building)
+        -- building = Building:new( gs:getState("gameGroup"), 1, 0 )
+        -- gs:addTableMember("buildings", building)
 
         local buildings = gs:getState("buildings")
         for i = 1, #buildings do
-            buildings[i]:MoveDownward(display.contentHeight / 2.5)
+            buildings[i]:MoveDownward(display.contentHeight / 2, 500)
         end
     end
 end
@@ -97,6 +105,7 @@ function Character:release()
 
     if (character.swinging == false) then return end
 
+    character.anchor = nil
     character.swinging = false
 
     self:manageBuildings()
@@ -111,13 +120,12 @@ function Character:manageBuildings()
     local releaseSpeed = math.sqrt(vx * vx + vy * vy)
 
     if (releaseAngle > -2.1 and releaseAngle < -0.9 and releaseSpeed > 300) then -- move anchors and create a new one
+        -- local building = Building:new( gs:getState("gameGroup"), 0,  0)
+        -- gs:addTableMember("buildings", building)
+        -- building = Building:new( gs:getState("gameGroup"), 1,  0)
+        -- gs:addTableMember("buildings", building)
 
-        local randomNumber = math.random(100, 200)
-        print("randomNumber: " .. randomNumber)
-        local building = Building:new( gs:getState("gameGroup"),  randomNumber)
-        gs:addTableMember("buildings", building)
-
-        local unitsToMove = 80;
+        local unitsToMove = 120;
         if (releaseSpeed > 500) then
             unitsToMove = unitsToMove * 2;
         elseif (releaseSpeed > 450) then
@@ -140,9 +148,28 @@ function Character:manageBuildings()
         unitsToMove = unitsToMove * magnifier;
 
         local buildings = gs:getState("buildings")
+        local buildingsToKeep = {}
+        local buildingsToRemove = {}
+        gs:setState("buildings", buildingsToKeep)
 
         for i = 1, #buildings do
-            buildings[i]:MoveDownward(unitsToMove)
+            local building = buildings[i]
+            local keep = building:MoveDownward(unitsToMove, 350 * magnifier)
+            if (keep) then
+                gs:addTableMember("buildings", building)
+            else
+                table.insert(buildingsToRemove, building)
+            end
+        end
+        
+        for i = 1, #buildingsToRemove do
+            local building = buildingsToRemove[i]._ref
+            local anchors = building.anchors
+            for i = 1, #anchors do
+                anchors[i]._ref:removeSelf()
+            end
+            building.anchors = {}
+            building:removeSelf()
         end
     end
 end
