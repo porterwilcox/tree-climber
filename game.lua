@@ -8,6 +8,8 @@ local scene = composer.newScene()
 -- the scene is removed entirely (not recycled) via "composer.removeScene()"
 -- -----------------------------------------------------------------------------------
 
+local mathHelpers = require("helpers.mathHelpers")
+
 local GameState = require("states.GameState")
 local Building = require("models.Building")
 local Anchor = require("models.Anchor")
@@ -27,35 +29,20 @@ local gs = GameState:new()
 
 local flightMonitorTimerId
 
-local function initBuilding()
-	local building = Building:new( gameGroup, 0, display.contentHeight, math.random(3, 8) )
-	gs:addTableMember("buildings", building)
-	building = Building:new( gameGroup, 1, display.contentHeight, math.random(3, 8) )
-	gs:addTableMember("buildings", building)
-
-	building = Building:new( gameGroup, 0, 0 )
-	gs:addTableMember("buildings", building)
-	building = Building:new( gameGroup, 1, 0 )
-	gs:addTableMember("buildings", building)
-
-	building = Building:new( gameGroup, 0, -display.contentHeight )
-	gs:addTableMember("buildings", building)
-	building = Building:new( gameGroup, 1, -display.contentHeight )
-	gs:addTableMember("buildings", building)
-
-	building = Building:new( gameGroup, 0, -display.contentHeight * 2 )
-	gs:addTableMember("buildings", building)
-	building = Building:new( gameGroup, 1, -display.contentHeight * 2 )
-	gs:addTableMember("buildings", building)
+local function initMountains()
+	local mountains = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, 478, 800 )
+	mountains.fill = {
+		type = "image",
+		filename = "assets/images/mountains.png"
+	}
+	gs:setState("mountains", mountains)
 end
 
-local function initAnchor()
-	local anchor = Anchor:new( gameGroup, display.contentCenterX, 600 )
-	gs:addTableMember("anchors", anchor)
-
-	anchor = Anchor:new( gameGroup, 90, 200 )
-	gs:addTableMember("anchors", anchor)
-
+local function initBuildings()
+	Building.initTwo(display.contentHeight, true)
+	Building.initTwo(0)
+	Building.initTwo(-display.contentHeight)
+	Building.initTwo(-display.contentHeight * 2)
 end
 
 local function initCharacter()
@@ -64,6 +51,9 @@ local function initCharacter()
 end
 
 local function restart()
+	gs:getState("mountains"):removeSelf()
+	initMountains()
+
 	-- remove all the buildings
 	local buildings = gs:getState("buildings")
 	for i = 1, #buildings do
@@ -75,7 +65,7 @@ local function restart()
 		buildings[i]._ref:removeSelf()
 	end
 	gs:setState("buildings", {})
-	initBuilding()
+	initBuildings()
 
 	gs:getState("character")._ref:removeSelf()
 	initCharacter()
@@ -103,7 +93,7 @@ local function startSwing(event)
 		flightEnd()
 		gs:getState("character"):swing()
 	elseif event.phase == "moved" then
-		gs:getState("character"):setPivotJointMotorTorque(event.x)
+		gs:getState("character"):setLinearDamping(event.x)
     elseif event.phase == "ended" then
 		gs:getState("character"):release()
 		monitorFlight()
@@ -123,8 +113,12 @@ function scene:create( event )
 	backgroundGroup = display.newGroup()
 	sceneGroup:insert(backgroundGroup)
 
-	local backgroundColor = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
-	backgroundColor:setFillColor( 52/255, 52/255, 52/255 )
+	local sky = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
+	-- background:setFillColor( 52/255, 52/255, 52/255 
+	sky.fill = {
+		type = "image",
+		filename = "assets/images/sky.png"
+	}
 
     uiGroup = display.newGroup()
 	sceneGroup:insert(uiGroup)
@@ -149,9 +143,9 @@ function scene:show( event )
 	elseif ( phase == "did" ) then
 		-- Code here runs when the scene is entirely on screen
 
-		initBuilding()
+		initMountains()
+		initBuildings()
 		initCharacter()
-
 	end
 end
 

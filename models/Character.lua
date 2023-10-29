@@ -11,6 +11,16 @@ Character.__index = Character
 
 local id = 1
 
+local tuckedPaint = {
+    type = "image",
+    filename = "assets/images/ninja-tucked.png"
+}
+local swingingPaint = {
+    type = "image",
+    filename = "assets/images/ninja-swinging.png"
+}
+local charPhysMod = 2
+
 local function onCollision( event )
     local character = event.target
     
@@ -32,13 +42,14 @@ local function onCollision( event )
 end
 
 function Character:new( group )
-    local character = display.newCircle( group, display.contentCenterX, display.contentHeight + 100, 10 )
-    character:setFillColor( 0, 1, 0 )
-    physics.addBody(character, "dynamic", {radius = character.width/2, bounce = 0.2, density = 1})
+    local character = display.newCircle( group, display.contentCenterX, display.contentHeight + 100, 10 * charPhysMod )
+    character.fill = tuckedPaint
+    physics.addBody(character, "dynamic", {radius = character.width/2, bounce = 0.2, density = 1 / charPhysMod})
     character.gravityScale = 1
     character:addEventListener("collision", onCollision)
-    -- propel upwards like a jolt
-    character:applyLinearImpulse(0, -6, character.x, character.y)
+    character:applyLinearImpulse(0, -6 * charPhysMod, character.x, character.y)
+    -- make the character spin on it axis ie rotate
+    character.angularVelocity = -200
     
     character.id = id
     character.name = "character"
@@ -55,64 +66,96 @@ function Character:swing()
     local anchor = character.swingableAnchors[#character.swingableAnchors]
     if (anchor == nil) then return end
 
+    transition.cancelAll()
+
+    character.fill = swingingPaint
     character.anchor = anchor
     character.swinging = true
 
+    -- local vx, vy = character:getLinearVelocity()
+    -- local angleOfDirection = math.atan2(vy, vx)
+    -- local movingUp = angleOfDirection < 0
+    -- local motorSpeed = 1000
+    -- local isLeftOfAnchor = character.x < anchor.x
+    -- if (movingUp and isLeftOfAnchor) then
+    --     motorSpeed = motorSpeed * -1
+    -- elseif (not movingUp and not isLeftOfAnchor) then
+    --     motorSpeed = motorSpeed * -1
+    -- end
+
     local vx, vy = character:getLinearVelocity()
-    local angleOfDirection = math.atan2(vy, vx)
-    local movingUp = angleOfDirection < 0
-    local motorSpeed = 1000
-    local isLeftOfAnchor = character.x < anchor.x
-    if (movingUp and isLeftOfAnchor) then
-        motorSpeed = motorSpeed * -1
-    elseif (not movingUp and not isLeftOfAnchor) then
-        motorSpeed = motorSpeed * -1
+
+    local dx = character.x - anchor.x
+    local dy = character.y - anchor.y
+
+    local crossProduct = vx * dy - vy * dx
+
+    local motorSpeed = 1000 * charPhysMod
+    if crossProduct > 0 then -- Counterclockwise
+        motorSpeed = motorSpeed * 1 
+        character.xScale = 1
+    elseif crossProduct < 0 then -- Clockwise
+        motorSpeed = motorSpeed * -1 
+        character.xScale = -1
+    end
+
+    -- rotate the top of the character to the anchor
+    local angle = math.atan2(character.y - anchor.y, character.x - anchor.x) * 180 / math.pi
+    character.rotation = angle - 90
+
+    -- get the distance between the character and the anchor
+    local distance = math.sqrt((character.x - anchor.x) ^ 2 + (character.y - anchor.y) ^ 2)
+    while (distance < 45) do
+        local x = anchor.x + (character.x - anchor.x) * 2
+        local y = anchor.y + (character.y - anchor.y) * 2
+        character.x, character.y = x, y
+        distance = math.sqrt((character.x - anchor.x) ^ 2 + (character.y - anchor.y) ^ 2)
     end
 
     local pivotJoint = physics.newJoint("pivot", character, anchor, anchor.x, anchor.y)
     pivotJoint.isMotorEnabled = true
     pivotJoint.motorSpeed = motorSpeed
-    pivotJoint.maxMotorTorque = 10
+    pivotJoint.maxMotorTorque = 10 * charPhysMod
     character.pivotJoint = pivotJoint
 
-    if (anchor.y < display.contentHeight * 0.5) then
-        -- local building = Building:new( gs:getState("gameGroup"), 0, 0 )
-        -- gs:addTableMember("buildings", building)
-        -- building = Building:new( gs:getState("gameGroup"), 1, 0 )
-        -- gs:addTableMember("buildings", building)
-
+    local targetY = display.contentHeight - 225
+    local distance = targetY - anchor.y
+    if (distance > 0) then
+        distance = distance + math.random(-50, 100)
+    end
+    if (math.abs(distance) > 100) then
         local buildings = gs:getState("buildings")
         for i = 1, #buildings do
-            buildings[i]:MoveDownward(display.contentHeight / 2, 500)
+            buildings[i]:Move(distance, 500)
         end
     end
 end
 
-function Character:setPivotJointMotorTorque(x)
+function Character:setLinearDamping(x)
     local character = self._ref
-    local pivotJoint = character.pivotJoint
-    if (not character.swinging or pivotJoint == nil) then return end
+    if (not character.swinging) then return end
 
     local distance = display.contentCenterX - x
-    local torqueAdjustment = math.ceil(distance / 36)
-    pivotJoint.maxMotorTorque = 10 - torqueAdjustment
+    local linearDampingAdjustment = math.ceil(distance / 36) * .1
+    character.linearDamping = 0 + linearDampingAdjustment
 end
 
-local releaseCount = 1
 function Character:release()
     local character = self._ref
-    character.angularVelocity = character.angularVelocity * 3  --easy way to manipulate how far the character flys
+
+    character.linearDamping = 0
 
     if (character.swinging == false) then return end
 
+    character.fill = tuckedPaint
     character.anchor = nil
     character.swinging = false
 
-    self:manageBuildings()
+    self:moveElements()
     self:removePivotJoint()
 end
 
-function Character:manageBuildings()
+function Character:moveElements()
     local character = self._ref
 
     local vx, vy = character:getLinearVelocity()
@@ -154,7 +197,7 @@ function Character:manageBuildings()
 
         for i = 1, #buildings do
             local building = buildings[i]
-            local keep = building:MoveDownward(unitsToMove, 350 * magnifier)
+            local keep = building:Move(unitsToMove, 350 * magnifier)
             if (keep) then
                 gs:addTableMember("buildings", building)
             else
@@ -171,6 +214,9 @@ function Character:manageBuildings()
             building.anchors = {}
             building:removeSelf()
         end
+
+        local mountains = gs:getState("mountains")
+        transition.to(mountains, {time = ms, y = mountains.y + unitsToMove * 0.05})
     end
 end
 

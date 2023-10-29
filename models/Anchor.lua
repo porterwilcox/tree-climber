@@ -1,13 +1,16 @@
 local physics = require("physics")
 physics.start()
 
+local GameState = require("states.GameState")
+local gs = GameState:new()
+
 local Anchor = {}
 Anchor.__index = Anchor
 
 local id = 1
 
-function Anchor:new( group, x, y )
-    local anchor = display.newCircle( group, x, y, 10 )
+function Anchor:new( x, y )
+    local anchor = display.newCircle( gs:getState("gameGroup"), x, y, 10 )
     anchor:setFillColor( 1, 169/255, 1/255 )
     anchor.alpha = 0.5
     physics.addBody(anchor, "static", {radius = 120, isSensor = true})
@@ -19,7 +22,7 @@ function Anchor:new( group, x, y )
     return self
 end
 
-function Anchor:MoveDownward(unitsToMove, ms)
+function Anchor:Move(unitsToMove, ms)
     local anchor = self._ref
 
     transition.to(anchor, {time = ms, y = anchor.y + unitsToMove})

@@ -3,6 +3,7 @@ local state = {
     character = nil,
     buildings = {},
     anchors = {},
+    mountains = nil
 }
 
 local GameState = {}

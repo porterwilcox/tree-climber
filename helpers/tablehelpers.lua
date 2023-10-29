@@ -1,6 +1,6 @@
-local tablehelpers = {}
+local tableHelpers = {}
 
-function tablehelpers.find(t, predicate)
+function tableHelpers.find(t, predicate)
     for _, value in ipairs(t) do
         if predicate(value) then
             return value
@@ -9,7 +9,7 @@ function tablehelpers.find(t, predicate)
     return nil
 end
 
-function tablehelpers.remove(t, predicate)
+function tableHelpers.remove(t, predicate)
     for i = #t, 1, -1 do
         if predicate(t[i]) then
             table.remove(t, i)
@@ -17,7 +17,7 @@ function tablehelpers.remove(t, predicate)
     end
 end
 
-function tablehelpers.filter(t, predicate)
+function tableHelpers.filter(t, predicate)
     local result = {}
     for _, value in ipairs(t) do
         if predicate(value) then
@@ -28,4 +28,4 @@ function tablehelpers.filter(t, predicate)
 end
 
 
-return tablehelpers
+return tableHelpers

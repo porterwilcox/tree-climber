@@ -1,7 +1,10 @@
 local physics = require("physics")
 physics.start()
 
-local tablehelpers = require( "helpers.tablehelpers" )
+local mathHelpers = require( "helpers.mathHelpers" )
+
+local GameState = require("states.GameState")
+local gs = GameState:new()
 
 local Anchor = require("models.Anchor")
 
@@ -12,6 +15,7 @@ local id = 1
 
 local left = 0
 local right = display.contentWidth
+local lastLeftAnchor
 
 local buildingConfigs = {
     -- { fileName = "poc1.png", w = 164, h = 290, p = 10, anchorConfigs = { 
@@ -48,15 +52,15 @@ local buildingConfigs = {
     } }
 }
 
-function Building:new( group, side, y )
-    local buildingConfigIndex = math.random(1, #buildingConfigs)
-    local bc = buildingConfigs[buildingConfigIndex]
+function Building:new( side, y, bcIndex, acIndex )
+    local bcIndex = bcIndex or math.random(1, #buildingConfigs)
+    local bc = buildingConfigs[bcIndex]
 
-    local building = display.newImageRect( group, "assets/images/" .. bc.fileName, bc.w, bc.h  )
+    local building = display.newImageRect( gs:getState("gameGroup"), "assets/images/" .. bc.fileName, bc.w, bc.h  )
 
     local sideOfScreen
     local buildingCenterX
-    if (side == 1) then
+    if (side == 0) then
         sideOfScreen = left
         buildingCenterX = left  + bc.p
     else
@@ -74,15 +78,14 @@ function Building:new( group, side, y )
     id = id + 1
     local self = setmetatable({ _ref = building }, Building)
 
-    self:addAnchor(group, bc, sideOfScreen, y)
+    self:addAnchor(bc, sideOfScreen, y, acIndex)
 
     return self
 end
 
-function Building:addAnchor(group, bc, sideOfScreen, buildingBottom, anchorConfigIndex)
-    local stopRecursion = anchorConfigIndex ~= nil
-    local anchorConfigIndex = anchorConfigIndex or math.random(1, #bc.anchorConfigs)
-    local ac = bc.anchorConfigs[anchorConfigIndex]
+function Building:addAnchor(bc, sideOfScreen, buildingBottom, acIndex, stopRecursion)
+    local acIndex = acIndex or math.random(1, #bc.anchorConfigs)
+    local ac = bc.anchorConfigs[acIndex]
 
     local x = ac.x
     if (sideOfScreen == right) then
@@ -90,19 +93,19 @@ function Building:addAnchor(group, bc, sideOfScreen, buildingBottom, anchorConfi
     end
     local anchorX = sideOfScreen + x
     local anchorY = buildingBottom - ac.y
-    local anchor = Anchor:new(group, anchorX, anchorY)
+    local anchor = Anchor:new( anchorX, anchorY )
     table.insert(self._ref.anchors, anchor)
 
     if (not stopRecursion) then
-        if (anchorConfigIndex < 6) then
-            self:addAnchor(group, bc, sideOfScreen, buildingBottom, math.random(12, 16))
-        elseif (anchorConfigIndex > 11) then
-            self:addAnchor(group, bc, sideOfScreen, buildingBottom, math.random(1, 5))
+        if (acIndex < 7) then
+            self:addAnchor(bc, sideOfScreen, buildingBottom, acIndex + 8, true)
+        elseif (acIndex > 10) then
+            self:addAnchor(bc, sideOfScreen, buildingBottom, acIndex - 8, true)
         end
     end
 end
 
-function Building:MoveDownward(unitsToMove, ms)
+function Building:Move(unitsToMove, ms)
     local building = self._ref
 
     if (building.y > display.contentHeight + building.height) then
@@ -113,10 +116,28 @@ function Building:MoveDownward(unitsToMove, ms)
 
     local anchors = building.anchors
     for i = 1, #anchors do
-        anchors[i]:MoveDownward(unitsToMove, ms)
+        anchors[i]:Move(unitsToMove, ms)
     end
 
     return true
+end
+
+function Building.initTwo( y, isStart )
+    local bcIndex = 1
+    local acIndex = math.random(3, 7)
+    if (not isStart) then
+        bcIndex = math.random(1, #buildingConfigs)
+        acIndex = math.random(1, #buildingConfigs[bcIndex].anchorConfigs)
+    end
+    local building = Building:new( 0, y, bcIndex, acIndex )
+    gs:addTableMember("buildings", building)
+
+    acIndex = mathHelpers.random(3, 7, { acIndex })
+    if (not isStart) then
+        acIndex = mathHelpers.random(1, #buildingConfigs[bcIndex].anchorConfigs, { acIndex, acIndex - 8, acIndex + 8 })
+    end
+    building = Building:new( 1, y, bcIndex, acIndex )
+    gs:addTableMember("buildings", building)
 end
 
 return Building
