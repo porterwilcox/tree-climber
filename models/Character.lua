@@ -23,20 +23,43 @@ local charPhysMod = 2
 
 local function onCollision( event )
     local character = event.target
+
+    local isAnchor = event.other.name == "anchor"
+    local isSkyLantern = event.other.name == "skyLantern"
     
-    if (event.other.name == "anchor") then
-        local anchor = event.other
+    if ( isAnchor or isSkyLantern ) then
+        local swingable = event.other
 
         if (event.phase == "began") then
-            local index = table.indexOf( character.swingableAnchors, anchor )
-            if (index ~= nil) then table.remove(character.swingableAnchors, index) end
-            table.insert(character.swingableAnchors, anchor)
-            if (not character.swinging) then anchor.alpha = 0.8 end
+            local index = table.indexOf( character.swingables, swingable )
+            if (index ~= nil) then table.remove(character.swingables, index) end
+            table.insert(character.swingables, swingable)
+            
+            if (not character.swinging) then 
+                if (isAnchor) then
+                    swingable.alpha = 0.5 
+                elseif (isSkyLantern) then
+                    swingable.alpha = 1
+                end
+            end
         elseif (event.phase == "ended") then
-            local index = table.indexOf( character.swingableAnchors, anchor )
-            if (index ~= nil) then table.remove(character.swingableAnchors, index) end
-            anchor.alpha = 0.5
-            if (character.anchor == anchor) then anchor.alpha = 0.8 end
+            local index = table.indexOf( character.swingables, swingable )
+            if (index ~= nil) then table.remove(character.swingables, index) end
+
+
+            if (isAnchor) then
+                swingable.alpha = 0
+            elseif (isSkyLantern) then
+                swingable.alpha = 0.8
+            end
+
+            if (character.swingable == swingable) then  
+                if (isAnchor) then
+                    swingable.alpha = 0.5
+                elseif (isSkyLantern) then
+                    swingable.alpha = 1
+                end
+            end
         end
     end
 end
@@ -53,35 +76,24 @@ function Character:new( group )
     
     character.id = id
     character.name = "character"
-    character.swingableAnchors = {}
+    character.swingables = {}
     character.swinging = false
     id = id + 1
-    local self = setmetatable({ _ref = character }, Character)
+    local self = setmetatable({ _obj = character }, Character)
     return self
 end
 
 function Character:swing()
-    local character = self._ref
+    local character = self._obj
 
-    local anchor = character.swingableAnchors[#character.swingableAnchors]
+    local anchor = character.swingables[#character.swingables]
     if (anchor == nil) then return end
 
-    transition.cancelAll()
+    -- transition.cancelAll()
 
     character.fill = swingingPaint
-    character.anchor = anchor
+    character.swingable = anchor
     character.swinging = true
-
-    -- local vx, vy = character:getLinearVelocity()
-    -- local angleOfDirection = math.atan2(vy, vx)
-    -- local movingUp = angleOfDirection < 0
-    -- local motorSpeed = 1000
-    -- local isLeftOfAnchor = character.x < anchor.x
-    -- if (movingUp and isLeftOfAnchor) then
-    --     motorSpeed = motorSpeed * -1
-    -- elseif (not movingUp and not isLeftOfAnchor) then
-    --     motorSpeed = motorSpeed * -1
-    -- end
 
     local vx, vy = character:getLinearVelocity()
 
@@ -97,6 +109,11 @@ function Character:swing()
     elseif crossProduct < 0 then -- Clockwise
         motorSpeed = motorSpeed * -1 
         character.xScale = -1
+    end
+
+    -- if the character is not spinning fast enough, speed it up
+    if (math.abs(character.angularVelocity) < 200) then
+        character.angularVelocity = 500
     end
 
     -- rotate the top of the character to the anchor
@@ -132,7 +149,7 @@ function Character:swing()
 end
 
 function Character:setLinearDamping(x)
-    local character = self._ref
+    local character = self._obj
     if (not character.swinging) then return end
 
     local distance = display.contentCenterX - x
@@ -141,14 +158,14 @@ function Character:setLinearDamping(x)
 end
 
 function Character:release()
-    local character = self._ref
+    local character = self._obj
 
     character.linearDamping = 0
 
     if (character.swinging == false) then return end
 
     character.fill = tuckedPaint
-    character.anchor = nil
+    character.swingable = nil
     character.swinging = false
 
     self:moveElements()
@@ -156,7 +173,7 @@ function Character:release()
 end
 
 function Character:moveElements()
-    local character = self._ref
+    local character = self._obj
 
     local vx, vy = character:getLinearVelocity()
     local releaseAngle = math.atan2(vy, vx)
@@ -206,10 +223,10 @@ function Character:moveElements()
         end
         
         for i = 1, #buildingsToRemove do
-            local building = buildingsToRemove[i]._ref
+            local building = buildingsToRemove[i]._obj
             local anchors = building.anchors
             for i = 1, #anchors do
-                anchors[i]._ref:removeSelf()
+                anchors[i]._obj:removeSelf()
             end
             building.anchors = {}
             building:removeSelf()
@@ -221,7 +238,7 @@ function Character:moveElements()
 end
 
 function Character:removePivotJoint()
-    local character = self._ref
+    local character = self._obj
 
     if (character.pivotJoint) then
         character.pivotJoint:removeSelf()
@@ -230,7 +247,7 @@ function Character:removePivotJoint()
 end
 
 function Character:isOffScreen()
-    local character = self._ref
+    local character = self._obj
     local edgePadding = 50
 
     if (character.swinging) then return false end

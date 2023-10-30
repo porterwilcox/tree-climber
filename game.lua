@@ -11,8 +11,9 @@ local scene = composer.newScene()
 local mathHelpers = require("helpers.mathHelpers")
 
 local GameState = require("states.GameState")
-local Building = require("models.Building")
 local Anchor = require("models.Anchor")
+local Building = require("models.Building")
+local SkyLantern = require("models.SkyLantern")
 local Character = require("models.Character")
 
 local phyics = require("physics")
@@ -39,10 +40,16 @@ local function initMountains()
 end
 
 local function initBuildings()
-	Building.initTwo(display.contentHeight, true)
+	Building.initTwo(display.contentHeight * 2)
+	Building.initTwo(display.contentHeight)
 	Building.initTwo(0)
 	Building.initTwo(-display.contentHeight)
 	Building.initTwo(-display.contentHeight * 2)
+end
+
+local function initSkyLanterns()
+	SkyLantern.initSkyLanterns()
+	timer.performWithDelay( 2500, function() SkyLantern.initSkyLanterns() end, 0 )
 end
 
 local function initCharacter()
@@ -58,16 +65,16 @@ local function restart()
 	local buildings = gs:getState("buildings")
 	for i = 1, #buildings do
 		-- remove anchors
-		local anchors = buildings[i]._ref.anchors
+		local anchors = buildings[i]._obj.anchors
 		for j = 1, #anchors do
-			anchors[j]._ref:removeSelf()
+			anchors[j]._obj:removeSelf()
 		end
-		buildings[i]._ref:removeSelf()
+		buildings[i]._obj:removeSelf()
 	end
 	gs:setState("buildings", {})
 	initBuildings()
 
-	gs:getState("character")._ref:removeSelf()
+	gs:getState("character")._obj:removeSelf()
 	initCharacter()
 end
 
@@ -114,7 +121,7 @@ function scene:create( event )
 	sceneGroup:insert(backgroundGroup)
 
 	local sky = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
-	-- background:setFillColor( 52/255, 52/255, 52/255 
+	-- sky:setFillColor( 52/255, 52/255, 52/255 )
 	sky.fill = {
 		type = "image",
 		filename = "assets/images/sky.png"
@@ -129,6 +136,10 @@ function scene:create( event )
 
 	characterGroup = display.newGroup()
 	sceneGroup:insert(characterGroup)
+
+	initMountains()
+	initBuildings()
+	initSkyLanterns()
 end
 
 
@@ -143,8 +154,6 @@ function scene:show( event )
 	elseif ( phase == "did" ) then
 		-- Code here runs when the scene is entirely on screen
 
-		initMountains()
-		initBuildings()
 		initCharacter()
 	end
 end

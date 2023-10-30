@@ -1,9 +1,10 @@
 local state = {
     gameGroup = nil,
-    character = nil,
-    buildings = {},
+    mountains = nil,
     anchors = {},
-    mountains = nil
+    buildings = {},
+    skyLanterns = {},
+    character = nil,
 }
 
 local GameState = {}
