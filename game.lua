@@ -47,11 +47,6 @@ local function initBuildings()
 	Building.initTwo(-display.contentHeight * 2)
 end
 
-local function initSkyLanterns()
-	SkyLantern.initSkyLanterns()
-	timer.performWithDelay( 2500, function() SkyLantern.initSkyLanterns() end, 0 )
-end
-
 local function initCharacter()
 	local character = Character:new(characterGroup)
 	gs:setState("character", character)
@@ -60,6 +55,16 @@ end
 local function restart()
 	gs:getState("mountains"):removeSelf()
 	initMountains()
+
+	local skyLanternTimer = gs:getState("skyLanternGeneratorTimerId")
+	if skyLanternTimer ~= nil then 
+		timer.cancel(skyLanternTimer) 
+		gs:setState("skyLanternGeneratorTimerId", nil)
+	end
+	-- local skyLanterns = gs:getState("skyLanterns")
+	-- for i = 1, #skyLanterns do
+	-- 	skyLanterns[i]:Delete()
+	-- end
 
 	-- remove all the buildings
 	local buildings = gs:getState("buildings")
@@ -139,7 +144,6 @@ function scene:create( event )
 
 	initMountains()
 	initBuildings()
-	initSkyLanterns()
 end
 
 

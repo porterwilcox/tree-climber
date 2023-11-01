@@ -30,6 +30,10 @@ function SkyLantern:new( x, y )
 
     skyLantern.origin = { x = x, y = y }
     skyLantern.destination = { }
+    skyLantern.transitionDuration = nil
+    skyLantern.transitionStart = nil
+    skyLantern.transition = nil
+    skyLantern.falling = false
 
     id = id + 1
     local self = setmetatable({ _obj = skyLantern }, SkyLantern)
@@ -39,7 +43,22 @@ end
 function SkyLantern:Move(unitsToMove, ms)
     local skyLantern = self._obj
 
-    transition.to(skyLantern, {time = ms, y = skyLantern.y + unitsToMove})
+    if skyLantern.transition == nil then print('transition is nil') return end
+    
+    -- Pause the transition
+    transition.pause(skyLantern.transition)
+    
+    -- Resume the transition after the delay
+    timer.performWithDelay(ms, function() transition.resume(skyLantern.transition) end, 1)
+end
+
+function SkyLantern:Delete()
+    local obj = self._obj
+    if obj.deleted then return end
+
+    tableHelpers.remove( gs:getState("skyLanterns"), function(r) return r._obj.id == obj.id end )
+    obj:removeSelf() 
+    obj.deleted = true
 end
 
 function SkyLantern.initSkyLanterns()
@@ -66,13 +85,26 @@ function SkyLantern.initSkyLanterns()
         local radians = math.rad(angle)
         obj.destination.x = math.cos(radians) * display.contentWidth
         obj.destination.y = math.sin(radians) * display.contentWidth
-        obj.transitionSpeed = 900 * obj.width/2
-        print("obj.transitionSpeed: " .. obj.transitionSpeed .. ", obj.width: " .. obj.width)
-        transition.to(skyLantern._obj, {time = obj.transitionSpeed, x = obj.destination.x, y = obj.destination.y})
+        obj.transitionDuration = (13000 * 20) / (obj.width / 2)
+        obj.transitionStart = system.getTimer()
+        obj.transition = transition.to(skyLantern._obj, {time = obj.transitionDuration, x = obj.destination.x, y = obj.destination.y})
 
         --remove when transition is complete
-        timer.performWithDelay(obj.transitionSpeed, function() tableHelpers.remove( gs:getState("skyLanterns"), function(r) return r._obj.id == obj.id end ) ; skyLantern._obj:removeSelf() end)
+        timer.performWithDelay(obj.transitionDuration, function() skyLantern:Delete() end, 1)
     end
+end
+
+function SkyLantern.startSkyLanternTimerGenerator()
+    local skyLanternTimer = gs:getState("skyLanternGeneratorTimerId")
+    if skyLanternTimer ~= nil then return end
+
+    SkyLantern.initSkyLanterns()
+    SkyLantern.initSkyLanterns()
+    SkyLantern.initSkyLanterns()
+    local skyLanternGeneratorTimerId = timer.performWithDelay( 2750, function()
+        SkyLantern.initSkyLanterns()
+    end, 0)
+    gs:setState("skyLanternGeneratorTimerId", skyLanternGeneratorTimerId)
 end
 
 return SkyLantern

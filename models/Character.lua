@@ -1,10 +1,13 @@
 local phyics = require("physics")
 physics.start()
 
+local tableHelpers = require( "helpers.tableHelpers" )
+
 local GameState = require("states.GameState")
 local gs = GameState:new()
 
 local Building = require("models.Building")
+local SkyLantern = require("models.SkyLantern")
 
 local Character = {}
 Character.__index = Character
@@ -71,8 +74,7 @@ function Character:new( group )
     character.gravityScale = 1
     character:addEventListener("collision", onCollision)
     character:applyLinearImpulse(0, -6 * charPhysMod, character.x, character.y)
-    -- make the character spin on it axis ie rotate
-    character.angularVelocity = -200
+    character.angularVelocity = -200 -- make the character do backflips
     
     character.id = id
     character.name = "character"
@@ -86,19 +88,21 @@ end
 function Character:swing()
     local character = self._obj
 
-    local anchor = character.swingables[#character.swingables]
-    if (anchor == nil) then return end
+    local swingable = character.swingables[#character.swingables]
+    if (swingable == nil) then return end
 
     -- transition.cancelAll()
+    local isAnchor = swingable.name == "anchor"
+    local isSkyLantern = swingable.name == "skyLantern"
 
     character.fill = swingingPaint
-    character.swingable = anchor
+    character.swingable = swingable
     character.swinging = true
 
     local vx, vy = character:getLinearVelocity()
 
-    local dx = character.x - anchor.x
-    local dy = character.y - anchor.y
+    local dx = character.x - swingable.x
+    local dy = character.y - swingable.y
 
     local crossProduct = vx * dy - vy * dx
 
@@ -113,30 +117,34 @@ function Character:swing()
 
     -- if the character is not spinning fast enough, speed it up
     if (math.abs(character.angularVelocity) < 200) then
-        character.angularVelocity = 500
+        if isAchor then
+            character.angularVelocity = 500
+        elseif isSkyLantern then
+            character.angularVelocity = 10000
+        end
     end
 
-    -- rotate the top of the character to the anchor
-    local angle = math.atan2(character.y - anchor.y, character.x - anchor.x) * 180 / math.pi
+    -- rotate the top of the character to the swingable
+    local angle = math.atan2(character.y - swingable.y, character.x - swingable.x) * 180 / math.pi
     character.rotation = angle - 90
 
-    -- get the distance between the character and the anchor
-    local distance = math.sqrt((character.x - anchor.x) ^ 2 + (character.y - anchor.y) ^ 2)
+    -- get the distance between the character and the swingable
+    local distance = math.sqrt((character.x - swingable.x) ^ 2 + (character.y - swingable.y) ^ 2)
     while (distance < 45) do
-        local x = anchor.x + (character.x - anchor.x) * 2
-        local y = anchor.y + (character.y - anchor.y) * 2
+        local x = swingable.x + (character.x - swingable.x) * 2
+        local y = swingable.y + (character.y - swingable.y) * 2
         character.x, character.y = x, y
-        distance = math.sqrt((character.x - anchor.x) ^ 2 + (character.y - anchor.y) ^ 2)
+        distance = math.sqrt((character.x - swingable.x) ^ 2 + (character.y - swingable.y) ^ 2)
     end
 
-    local pivotJoint = physics.newJoint("pivot", character, anchor, anchor.x, anchor.y)
+    local pivotJoint = physics.newJoint("pivot", character, swingable, swingable.x, swingable.y)
     pivotJoint.isMotorEnabled = true
     pivotJoint.motorSpeed = motorSpeed
     pivotJoint.maxMotorTorque = 10 * charPhysMod
     character.pivotJoint = pivotJoint
 
     local targetY = display.contentHeight - 225
-    local distance = targetY - anchor.y
+    local distance = targetY - swingable.y
     if (distance > 0) then
         distance = distance + math.random(-50, 100)
     end
@@ -145,6 +153,21 @@ function Character:swing()
         for i = 1, #buildings do
             buildings[i]:Move(distance, 500)
         end
+    end
+
+    if isSkyLantern then
+        tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+        swingable.falling = true
+        transition.cancel(swingable.transition)
+        local distanceToFall = display.contentHeight + 10 - swingable.y
+        local fallTime = distanceToFall * 10
+        swingable.transition = transition.to(swingable, { time = fallTime, y = display.contentHeight + 10, onComplete = function()
+            if (character.swingable == swingable) then
+                self:release()
+            end
+            local skyLantern = tableHelpers.find( gs:getState("skyLanterns"), function(r) return r._obj.id == swingable.id end )
+            if skyLantern ~= nil then skyLantern:Delete() end
+        end })
     end
 end
 
@@ -212,6 +235,10 @@ function Character:moveElements()
         local buildingsToRemove = {}
         gs:setState("buildings", buildingsToKeep)
 
+        local skyLanterns = gs:getState("skyLanterns")
+        for i = 1, #skyLanterns do
+            skyLanterns[i]:Move(unitsToMove, 350 * magnifier)
+        end
         for i = 1, #buildings do
             local building = buildings[i]
             local keep = building:Move(unitsToMove, 350 * magnifier)
@@ -221,7 +248,11 @@ function Character:moveElements()
                 table.insert(buildingsToRemove, building)
             end
         end
-        
+
+        if #gs:getState("buildings") < 4 then
+            SkyLantern.startSkyLanternTimerGenerator()
+        end
+
         for i = 1, #buildingsToRemove do
             local building = buildingsToRemove[i]._obj
             local anchors = building.anchors
