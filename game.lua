@@ -53,6 +53,8 @@ local function initCharacter()
 end
 
 local function restart()
+	transition.cancelAll();
+
 	gs:getState("mountains"):removeSelf()
 	initMountains()
 
@@ -61,10 +63,10 @@ local function restart()
 		timer.cancel(skyLanternTimer) 
 		gs:setState("skyLanternGeneratorTimerId", nil)
 	end
-	-- local skyLanterns = gs:getState("skyLanterns")
-	-- for i = 1, #skyLanterns do
-	-- 	skyLanterns[i]:Delete()
-	-- end
+	local skyLanterns = gs:getState("skyLanterns")
+	while #skyLanterns > 0 do
+		skyLanterns[#skyLanterns]:Delete()
+	end
 
 	-- remove all the buildings
 	local buildings = gs:getState("buildings")

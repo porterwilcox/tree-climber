@@ -53,7 +53,7 @@ local function onCollision( event )
             if (isAnchor) then
                 swingable.alpha = 0
             elseif (isSkyLantern) then
-                swingable.alpha = 0.8
+                swingable.alpha = 0.55
             end
 
             if (character.swingable == swingable) then  
@@ -65,6 +65,23 @@ local function onCollision( event )
             end
         end
     end
+end
+
+local function updateRopePosition(character)
+    if character.x and character.swingable and character.swingable.x then
+
+        if character.rope then character.rope:removeSelf() end
+
+        character.rope = display.newLine(gs:getState("gameGroup"), character.x, character.y, character.swingable.x, character.swingable.y)
+        character.rope.strokeWidth = 3
+        character.rope:setStrokeColor( 1, 1, 1, 0.5 )
+    end
+end
+
+local function onEnterFrame()
+    local character = gs:getState("character")._obj
+    if character == nil then return end
+    updateRopePosition(character)
 end
 
 function Character:new( group )
@@ -89,7 +106,10 @@ function Character:swing()
     local character = self._obj
 
     local swingable = character.swingables[#character.swingables]
-    if (swingable == nil) then return end
+    if (swingable == nil or swingable.x == nil) then
+        tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+        return
+    end
 
     -- transition.cancelAll()
     local isAnchor = swingable.name == "anchor"
@@ -169,6 +189,9 @@ function Character:swing()
             if skyLantern ~= nil then skyLantern:Delete() end
         end })
     end
+
+    updateRopePosition(character)
+    Runtime:addEventListener("enterFrame", onEnterFrame)
 end
 
 function Character:setLinearDamping(x)
@@ -187,6 +210,12 @@ function Character:release()
 
     if (character.swinging == false) then return end
 
+    if character.rope ~= nil then
+        character.rope:removeSelf()
+        character.rope = nil
+        Runtime:removeEventListener("enterFrame", onEnterFrame)
+    end
+
     character.fill = tuckedPaint
     character.swingable = nil
     character.swinging = false
@@ -197,16 +226,13 @@ end
 
 function Character:moveElements()
     local character = self._obj
+    if (character.x == nil) then return end
 
     local vx, vy = character:getLinearVelocity()
     local releaseAngle = math.atan2(vy, vx)
     local releaseSpeed = math.sqrt(vx * vx + vy * vy)
 
-    if (releaseAngle > -2.1 and releaseAngle < -0.9 and releaseSpeed > 300) then -- move anchors and create a new one
-        -- local building = Building:new( gs:getState("gameGroup"), 0,  0)
-        -- gs:addTableMember("buildings", building)
-        -- building = Building:new( gs:getState("gameGroup"), 1,  0)
-        -- gs:addTableMember("buildings", building)
+    if (releaseAngle > -2.1 and releaseAngle < -0.9 and releaseSpeed > 300) then
 
         local unitsToMove = 120;
         if (releaseSpeed > 500) then
@@ -249,7 +275,7 @@ function Character:moveElements()
             end
         end
 
-        if #gs:getState("buildings") < 4 then
+        if #gs:getState("buildings") < 7 then
             SkyLantern.startSkyLanternTimerGenerator()
         end
 
@@ -271,7 +297,7 @@ end
 function Character:removePivotJoint()
     local character = self._obj
 
-    if (character.pivotJoint) then
+    if (character.pivotJoint ~= nil) then
         character.pivotJoint:removeSelf()
         character.pivotJoint = nil
     end

@@ -22,7 +22,7 @@ local skyLanternFlyingRightPaint = {
 
 function SkyLantern:new( x, y )
     local skyLantern = display.newCircle( gs:getState("gameGroup"), x, y, math.random(10, 20) )
-    skyLantern.alpha = 0.8
+    skyLantern.alpha = 0.55
     physics.addBody(skyLantern, "static", {radius = 120, isSensor = true})
     
     skyLantern.id = id
@@ -56,6 +56,11 @@ function SkyLantern:Delete()
     local obj = self._obj
     if obj.deleted then return end
 
+    local character = gs:getState("character")._obj
+    if character ~= nil and character.swingable ~= nil and character.swingable.id == obj.id then 
+        return
+    end
+
     tableHelpers.remove( gs:getState("skyLanterns"), function(r) return r._obj.id == obj.id end )
     obj:removeSelf() 
     obj.deleted = true
@@ -64,9 +69,9 @@ end
 function SkyLantern.initSkyLanterns()
     local numSkyLanterns = math.random(1, 2)
     for i = 1, numSkyLanterns do
-        local margin = 100
-        local x = math.random(0 - margin, display.contentWidth + margin)
-        local y = math.random(display.contentHeight - margin, display.contentHeight)
+        local x
+        if math.random(0, 1) == 0 then x = -10 else x = display.contentWidth + 10 end
+        local y = math.random(200, display.contentHeight - 100)
         local skyLantern = SkyLantern:new(x, y)
         gs:addTableMember("skyLanterns", skyLantern)
 
@@ -76,10 +81,10 @@ function SkyLantern.initSkyLanterns()
         local angle
         if (x < display.contentCenterX) then
             skyLantern._obj.fill = skyLanternFlyingRightPaint
-            angle = math.random(-75, -35)
+            angle = math.random(-55, -35)
         else
             skyLantern._obj.fill = skyLanternFlyingLeftPaint
-            angle = math.random(-165, -125)
+            angle = math.random(-145, -125)
         end
 
         local radians = math.rad(angle)
@@ -99,9 +104,7 @@ function SkyLantern.startSkyLanternTimerGenerator()
     if skyLanternTimer ~= nil then return end
 
     SkyLantern.initSkyLanterns()
-    SkyLantern.initSkyLanterns()
-    SkyLantern.initSkyLanterns()
-    local skyLanternGeneratorTimerId = timer.performWithDelay( 2750, function()
+    local skyLanternGeneratorTimerId = timer.performWithDelay( 2000, function()
         SkyLantern.initSkyLanterns()
     end, 0)
     gs:setState("skyLanternGeneratorTimerId", skyLanternGeneratorTimerId)
