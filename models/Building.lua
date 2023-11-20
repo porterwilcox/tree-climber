@@ -100,7 +100,7 @@ function Building:Move(unitsToMove, ms)
         return false
     end
     
-    transition.to(building, {time = ms, y = building.y + unitsToMove})
+    transition.to(building, {time = ms, y = building.y + unitsToMove, transition = easing.outSine })
 
     local anchors = building.anchors
     for i = 1, #anchors do

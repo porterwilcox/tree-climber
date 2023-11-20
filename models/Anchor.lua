@@ -25,7 +25,7 @@ end
 function Anchor:Move(unitsToMove, ms)
     local anchor = self._obj
 
-    transition.to(anchor, {time = ms, y = anchor.y + unitsToMove})
+    transition.to(anchor, {time = ms, y = anchor.y + unitsToMove, transition = easing.outSine })
 end
 
 return Anchor

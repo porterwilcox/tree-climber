@@ -33,7 +33,14 @@ local function onCollision( event )
     if ( isAnchor or isSkyLantern ) then
         local swingable = event.other
 
+        
         if (event.phase == "began") then
+            if isSkyLantern then
+                if (swingable.x < 0 and swingable.direction == "left") or (swingable.x > display.contentWidth and swingable.direction == "right") then
+                    return
+                end
+            end
+
             local index = table.indexOf( character.swingables, swingable )
             if (index ~= nil) then table.remove(character.swingables, index) end
             table.insert(character.swingables, swingable)
@@ -53,7 +60,7 @@ local function onCollision( event )
             if (isAnchor) then
                 swingable.alpha = 0
             elseif (isSkyLantern) then
-                swingable.alpha = 0.55
+                swingable.alpha = 0.7
             end
 
             if (character.swingable == swingable) then  
@@ -112,7 +119,7 @@ function Character:swing()
     end
 
     -- transition.cancelAll()
-    local isAnchor = swingable.name == "anchor"
+    local isAnchor = swingable.name == "anchor" -- building anchors
     local isSkyLantern = swingable.name == "skyLantern"
 
     character.fill = swingingPaint
@@ -168,26 +175,34 @@ function Character:swing()
     if (distance > 0) then
         distance = distance + math.random(-50, 100)
     end
-    if (math.abs(distance) > 100) then
+    local updateScreenPosition = math.abs(distance) > 100
+    if updateScreenPosition then
         local buildings = gs:getState("buildings")
         for i = 1, #buildings do
             buildings[i]:Move(distance, 500)
         end
+        local skyLanterns = gs:getState("skyLanterns")
+        for i = 1, #skyLanterns do
+            skyLanterns[i]:Move(distance/2, 500, false)
+        end
     end
 
     if isSkyLantern then
-        tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
-        swingable.falling = true
-        transition.cancel(swingable.transition)
-        local distanceToFall = display.contentHeight + 10 - swingable.y
-        local fallTime = distanceToFall * 10
-        swingable.transition = transition.to(swingable, { time = fallTime, y = display.contentHeight + 10, onComplete = function()
-            if (character.swingable == swingable) then
-                self:release()
-            end
-            local skyLantern = tableHelpers.find( gs:getState("skyLanterns"), function(r) return r._obj.id == swingable.id end )
-            if skyLantern ~= nil then skyLantern:Delete() end
-        end })
+        local delay = 1
+        if updateScreenPosition then delay = 500 end
+        timer.performWithDelay( delay, function()
+            tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+            swingable.falling = true
+            swingable.rotation = 0;
+            transition.cancel(swingable.transition)
+            local distanceToFall = display.contentHeight + 100 - swingable.y
+            local fallTime = distanceToFall * 10
+            swingable.transition = transition.to(swingable, { time = fallTime, y = display.contentHeight + 100, onComplete = function()
+                if (character.swingable == swingable) then
+                    self:release()
+                end
+            end })
+        end, 1 )
     end
 
     updateRopePosition(character)
@@ -263,7 +278,7 @@ function Character:moveElements()
 
         local skyLanterns = gs:getState("skyLanterns")
         for i = 1, #skyLanterns do
-            skyLanterns[i]:Move(unitsToMove, 350 * magnifier)
+            skyLanterns[i]:Move(unitsToMove, 350 * magnifier, true)
         end
         for i = 1, #buildings do
             local building = buildings[i]

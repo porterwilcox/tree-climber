@@ -11,18 +11,22 @@ SkyLantern.__index = SkyLantern
 
 local id = 1
 
-local skyLanternFlyingLeftPaint = {
+local skyLanternRed = {
     type = "image",
-    filename = "assets/images/sky-lantern-flying-left.png"
+    filename = "assets/images/sky-lantern-red.png"
 }
-local skyLanternFlyingRightPaint = {
+local skyLanternYellow = {
     type = "image",
-    filename = "assets/images/sky-lantern-flying-right.png"
+    filename = "assets/images/sky-lantern-yellow.png"
+}
+local skyLanternBlue = {
+    type = "image",
+    filename = "assets/images/sky-lantern-blue.png"
 }
 
 function SkyLantern:new( x, y )
     local skyLantern = display.newCircle( gs:getState("gameGroup"), x, y, math.random(10, 20) )
-    skyLantern.alpha = 0.55
+    skyLantern.alpha = 0.7
     physics.addBody(skyLantern, "static", {radius = 120, isSensor = true})
     
     skyLantern.id = id
@@ -35,21 +39,58 @@ function SkyLantern:new( x, y )
     skyLantern.transition = nil
     skyLantern.falling = false
 
+    local color = math.random(1, 10)
+    if color <= 6 then 
+        skyLantern.fill = skyLanternRed
+    elseif color <= 9 then
+        skyLantern.fill = skyLanternYellow
+    else
+        skyLantern.fill = skyLanternBlue
+    end
+
     id = id + 1
     local self = setmetatable({ _obj = skyLantern }, SkyLantern)
     return self
 end
 
-function SkyLantern:Move(unitsToMove, ms)
-    local skyLantern = self._obj
+function SkyLantern:Move(unitsToMove, ms, fractionalMovement)
+    local obj = self._obj
+    if obj == nil or obj.deleted then return end
 
-    if skyLantern.transition == nil then print('transition is nil') return end
+    if obj.transition == nil then return end
+
+    transition.cancel(obj.transition)
+
+    if fractionalMovement then
+        if obj.falling then
+            unitsToMove = unitsToMove * .5  -- Fall faster if already falling
+        else
+            unitsToMove = unitsToMove * .25  -- Slow down if not falling
+        end
+    end
+
+    transition.to(obj, {time = ms, y = obj.y + unitsToMove, transition = easing.outSine })
     
-    -- Pause the transition
-    transition.pause(skyLantern.transition)
-    
-    -- Resume the transition after the delay
-    timer.performWithDelay(ms, function() transition.resume(skyLantern.transition) end, 1)
+    if obj.falling then
+        timer.performWithDelay( ms, function() 
+            if obj.deleted then return end
+            local distanceToFall = display.contentHeight + 100 - obj.y
+            local fallTime = distanceToFall * 10
+            obj.transition = transition.to(obj, { time = fallTime, y = display.contentHeight + 100, onComplete = function()
+                local character = gs:getState("character")
+                if (character._obj.swingable == swingable) then
+                    character:release()
+                end
+            end })
+        end, 1)
+    else
+        timer.performWithDelay(ms, function() 
+            if obj.falling then return end
+            local time = obj.transitionDuration - (system.getTimer() - obj.transitionStart) + ms
+            obj.transitionStart = system.getTimer()
+            obj.transition = transition.to(obj, {time = time, x = obj.destination.x, y = obj.destination.y})
+        end, 1) -- Reset the upward transition
+    end
 end
 
 function SkyLantern:Delete()
@@ -62,8 +103,26 @@ function SkyLantern:Delete()
     end
 
     tableHelpers.remove( gs:getState("skyLanterns"), function(r) return r._obj.id == obj.id end )
+    timer.cancel(obj.deletionTimerId)
     obj:removeSelf() 
     obj.deleted = true
+end
+
+function SkyLantern:isOffScreen()
+    local obj = self._obj
+    local edgePadding = 50
+
+    -- Check off top
+    if (obj.y + obj.height * 0.5) < 0 - edgePadding then
+        return true
+    end
+
+    -- Check off bottom
+    if (obj.y - obj.height * 0.5) > display.contentHeight + edgePadding then
+        return true
+    end
+
+    return false
 end
 
 function SkyLantern.initSkyLanterns()
@@ -71,7 +130,7 @@ function SkyLantern.initSkyLanterns()
     for i = 1, numSkyLanterns do
         local x
         if math.random(0, 1) == 0 then x = -10 else x = display.contentWidth + 10 end
-        local y = math.random(200, display.contentHeight - 100)
+        local y = math.random(0, display.contentHeight * .5)
         local skyLantern = SkyLantern:new(x, y)
         gs:addTableMember("skyLanterns", skyLantern)
 
@@ -80,22 +139,28 @@ function SkyLantern.initSkyLanterns()
         -- fly in lines angled up, between N and NW, and NE
         local angle
         if (x < display.contentCenterX) then
-            skyLantern._obj.fill = skyLanternFlyingRightPaint
+            obj.rotation = 10;
+            obj.direction = "right"
             angle = math.random(-55, -35)
         else
-            skyLantern._obj.fill = skyLanternFlyingLeftPaint
+            obj.rotation = -10;
+            obj.direction = "left"
             angle = math.random(-145, -125)
         end
-
         local radians = math.rad(angle)
         obj.destination.x = math.cos(radians) * display.contentWidth
         obj.destination.y = math.sin(radians) * display.contentWidth
         obj.transitionDuration = (13000 * 20) / (obj.width / 2)
         obj.transitionStart = system.getTimer()
-        obj.transition = transition.to(skyLantern._obj, {time = obj.transitionDuration, x = obj.destination.x, y = obj.destination.y})
+        obj.transition = transition.to(obj, {time = obj.transitionDuration, x = obj.destination.x, y = obj.destination.y})
 
-        --remove when transition is complete
-        timer.performWithDelay(obj.transitionDuration, function() skyLantern:Delete() end, 1)
+        --remove when skyLantern is off screen
+        obj.deletionTimerId = timer.performWithDelay(5000, function() 
+            local character = gs:getState("character")._obj
+            if skyLantern:isOffScreen() then
+                skyLantern:Delete()
+            end
+        end, 0)
     end
 end
 
