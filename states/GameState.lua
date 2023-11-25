@@ -4,7 +4,9 @@ local state = {
     anchors = {},
     buildings = {},
     skyLanterns = {},
+    fireworks = {},
     skyLanternGeneratorTimerId = nil,
+    fireworkGeneratorTimerId = nil,
     character = nil,
 }
 

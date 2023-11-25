@@ -14,6 +14,7 @@ local GameState = require("states.GameState")
 local Anchor = require("models.Anchor")
 local Building = require("models.Building")
 local SkyLantern = require("models.SkyLantern")
+local Firework = require("models.Firework")
 local Character = require("models.Character")
 
 local phyics = require("physics")
@@ -58,11 +59,13 @@ local function restart()
 	gs:getState("mountains"):removeSelf()
 	initMountains()
 
-	local skyLanternTimer = gs:getState("skyLanternGeneratorTimerId")
-	if skyLanternTimer ~= nil then 
-		timer.cancel(skyLanternTimer) 
-		gs:setState("skyLanternGeneratorTimerId", nil)
+	Firework.clearFireworkTimerGenerator()
+	local fireworks = gs:getState("fireworks")
+	while #fireworks > 0 do
+		fireworks[#fireworks]:Delete()
 	end
+
+	SkyLantern.clearSkyLanternTimerGenerator()
 	local skyLanterns = gs:getState("skyLanterns")
 	while #skyLanterns > 0 do
 		skyLanterns[#skyLanterns]:Delete()
@@ -161,6 +164,7 @@ function scene:show( event )
 		-- Code here runs when the scene is entirely on screen
 
 		initCharacter()
+		Firework:new( display.contentCenterX, display.contentCenterY )
 	end
 end
 

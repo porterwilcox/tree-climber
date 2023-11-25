@@ -81,6 +81,7 @@ function SkyLantern:Move(unitsToMove, ms, fractionalMovement)
                 if (character._obj.swingable == swingable) then
                     character:release()
                 end
+                self:Delete()
             end })
         end, 1)
     else
@@ -126,10 +127,16 @@ function SkyLantern:isOffScreen()
 end
 
 function SkyLantern.initSkyLanterns()
+    local skyLanterns = gs:getState("skyLanterns")
+    local skyLanternsNotFallingCount = #tableHelpers.filter(skyLanterns, function(skyLantern) return not skyLantern._obj.falling end)
+    if skyLanternsNotFallingCount > 4 then return end
+
+    local randomNumStart = math.random(0, 1)
     local numSkyLanterns = math.random(1, 2)
     for i = 1, numSkyLanterns do
         local x
-        if math.random(0, 1) == 0 then x = -10 else x = display.contentWidth + 10 end
+        if (randomNumStart % 2) == 0 then x = -10 else x = display.contentWidth + 10 end
+        randomNumStart = randomNumStart + 1
         local y = math.random(0, display.contentHeight * .5)
         local skyLantern = SkyLantern:new(x, y)
         gs:addTableMember("skyLanterns", skyLantern)
@@ -141,11 +148,11 @@ function SkyLantern.initSkyLanterns()
         if (x < display.contentCenterX) then
             obj.rotation = 10;
             obj.direction = "right"
-            angle = math.random(-55, -35)
+            angle = math.random(-30, -10)
         else
             obj.rotation = -10;
             obj.direction = "left"
-            angle = math.random(-145, -125)
+            angle = math.random(-170, -150)
         end
         local radians = math.rad(angle)
         obj.destination.x = math.cos(radians) * display.contentWidth
@@ -173,6 +180,14 @@ function SkyLantern.startSkyLanternTimerGenerator()
         SkyLantern.initSkyLanterns()
     end, 0)
     gs:setState("skyLanternGeneratorTimerId", skyLanternGeneratorTimerId)
+end
+
+function SkyLantern.clearSkyLanternTimerGenerator()
+    local skyLanternTimer = gs:getState("skyLanternGeneratorTimerId")
+	if skyLanternTimer ~= nil then 
+		timer.cancel(skyLanternTimer) 
+		gs:setState("skyLanternGeneratorTimerId", nil)
+	end
 end
 
 return SkyLantern

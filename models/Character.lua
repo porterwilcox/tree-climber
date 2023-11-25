@@ -8,6 +8,7 @@ local gs = GameState:new()
 
 local Building = require("models.Building")
 local SkyLantern = require("models.SkyLantern")
+local Firework = require("models.Firework")
 
 local Character = {}
 Character.__index = Character
@@ -24,15 +25,17 @@ local swingingPaint = {
 }
 local charPhysMod = 2
 
+local skyLanternSwingCount
+
 local function onCollision( event )
     local character = event.target
 
     local isAnchor = event.other.name == "anchor"
     local isSkyLantern = event.other.name == "skyLantern"
+    local isFirework = event.other.name == "firework"
     
-    if ( isAnchor or isSkyLantern ) then
+    if ( isAnchor or isSkyLantern or isFirework) then
         local swingable = event.other
-
         
         if (event.phase == "began") then
             if isSkyLantern then
@@ -92,6 +95,8 @@ local function onEnterFrame()
 end
 
 function Character:new( group )
+    skyLanternSwingCount = 0
+
     local character = display.newCircle( group, display.contentCenterX, display.contentHeight + 100, 10 * charPhysMod )
     character.fill = tuckedPaint
     physics.addBody(character, "dynamic", {radius = character.width/2, bounce = 0.2, density = 1 / charPhysMod})
@@ -122,6 +127,14 @@ function Character:swing()
     local isAnchor = swingable.name == "anchor" -- building anchors
     local isSkyLantern = swingable.name == "skyLantern"
 
+    if isSkyLantern then 
+        skyLanternSwingCount = skyLanternSwingCount + 1 
+        if skyLanternSwingCount == 10 then
+            SkyLantern.clearSkyLanternTimerGenerator()
+            Firework.startFireworkTimerGenerator()
+        end
+    end
+
     character.fill = swingingPaint
     character.swingable = swingable
     character.swinging = true
@@ -133,7 +146,7 @@ function Character:swing()
 
     local crossProduct = vx * dy - vy * dx
 
-    local motorSpeed = 1000 * charPhysMod
+    local motorSpeed = 500 * charPhysMod
     if crossProduct > 0 then -- Counterclockwise
         motorSpeed = motorSpeed * 1 
         character.xScale = 1
@@ -184,6 +197,10 @@ function Character:swing()
         local skyLanterns = gs:getState("skyLanterns")
         for i = 1, #skyLanterns do
             skyLanterns[i]:Move(distance/2, 500, false)
+        end
+        local fireworks = gs:getState("fireworks")
+        for i = 1, #fireworks do
+            fireworks[i]:Move(distance, 500)
         end
     end
 
@@ -271,15 +288,21 @@ function Character:moveElements()
 
         unitsToMove = unitsToMove * magnifier;
 
+        local skyLanterns = gs:getState("skyLanterns")
+        for i = 1, #skyLanterns do
+            skyLanterns[i]:Move(unitsToMove, 350 * magnifier, true)
+        end
+
+        local fireworks = gs:getState("fireworks")
+        for i = 1, #fireworks do
+            fireworks[i]:Move(unitsToMove, 350 * magnifier)
+        end
+
         local buildings = gs:getState("buildings")
         local buildingsToKeep = {}
         local buildingsToRemove = {}
         gs:setState("buildings", buildingsToKeep)
 
-        local skyLanterns = gs:getState("skyLanterns")
-        for i = 1, #skyLanterns do
-            skyLanterns[i]:Move(unitsToMove, 350 * magnifier, true)
-        end
         for i = 1, #buildings do
             local building = buildings[i]
             local keep = building:Move(unitsToMove, 350 * magnifier)
@@ -290,8 +313,9 @@ function Character:moveElements()
             end
         end
 
-        if #gs:getState("buildings") < 7 then
+        if #gs:getState("buildings") == 4 then
             SkyLantern.startSkyLanternTimerGenerator()
+            -- Firework.startFireworkTimerGenerator()
         end
 
         for i = 1, #buildingsToRemove do
@@ -320,7 +344,7 @@ end
 
 function Character:isOffScreen()
     local character = self._obj
-    local edgePadding = 50
+    local edgePadding = 100
 
     if (character.swinging) then return false end
     
