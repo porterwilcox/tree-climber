@@ -59,7 +59,6 @@ local function onCollision( event )
             local index = table.indexOf( character.swingables, swingable )
             if (index ~= nil) then table.remove(character.swingables, index) end
 
-
             if (isAnchor) then
                 swingable.alpha = 0
             elseif (isSkyLantern) then
@@ -102,7 +101,7 @@ function Character:new( group )
     physics.addBody(character, "dynamic", {radius = character.width/2, bounce = 0.2, density = 1 / charPhysMod})
     character.gravityScale = 1
     character:addEventListener("collision", onCollision)
-    character:applyLinearImpulse(0, -6 * charPhysMod, character.x, character.y)
+    character:applyLinearImpulse(0, -8 * charPhysMod, character.x, character.y)
     character.angularVelocity = -200 -- make the character do backflips
     
     character.id = id
@@ -117,19 +116,52 @@ end
 function Character:swing()
     local character = self._obj
 
+    if (character.swinging) then return end
+
     local swingable = character.swingables[#character.swingables]
     if (swingable == nil or swingable.x == nil) then
         tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+        
+        if #character.swingables > 0 then
+            self:swing()
+        end
+        
         return
     end
+
+    -- if the swingable and self are more than 120 pixels apart, don't swing
+    local distance = math.sqrt((character.x - swingable.x) ^ 2 + (character.y - swingable.y) ^ 2)
+    if (distance > 150) then
+        tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+        
+        if #character.swingables > 0 then
+            self:swing()
+        end
+        
+        return
+    end
+
+    -- remove the swingable from the end of the character.swingables list and move it to the front
+    tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+    table.insert(character.swingables, 1, swingable)
 
     -- transition.cancelAll()
     local isAnchor = swingable.name == "anchor" -- building anchors
     local isSkyLantern = swingable.name == "skyLantern"
 
+    if isAnchor and not swingable.physicalBodyExists then
+        tableHelpers.remove( character.swingables, function(r) return r.id == swingable.id end )
+        
+        if #character.swingables > 0 then
+            self:swing()
+        end
+        
+        return
+    end
+
     if isSkyLantern then 
         skyLanternSwingCount = skyLanternSwingCount + 1 
-        if skyLanternSwingCount == 10 then
+        if skyLanternSwingCount == 50 then
             SkyLantern.clearSkyLanternTimerGenerator()
             Firework.startFireworkTimerGenerator()
         end
@@ -177,7 +209,7 @@ function Character:swing()
         distance = math.sqrt((character.x - swingable.x) ^ 2 + (character.y - swingable.y) ^ 2)
     end
 
-    local pivotJoint = physics.newJoint("pivot", character, swingable, swingable.x, swingable.y)
+    local pivotJoint = physics.newJoint("pivot", character, swingable, swingable.x, swingable.y) --HELP HERE!! Occasionally, the pivotJoint is nil on the next line. what could be causing it?
     pivotJoint.isMotorEnabled = true
     pivotJoint.motorSpeed = motorSpeed
     pivotJoint.maxMotorTorque = 10 * charPhysMod
@@ -192,15 +224,15 @@ function Character:swing()
     if updateScreenPosition then
         local buildings = gs:getState("buildings")
         for i = 1, #buildings do
-            buildings[i]:Move(distance, 500)
+            buildings[i]:move(distance, 500)
         end
         local skyLanterns = gs:getState("skyLanterns")
         for i = 1, #skyLanterns do
-            skyLanterns[i]:Move(distance/2, 500, false)
+            skyLanterns[i]:move(distance/2, 500, false)
         end
         local fireworks = gs:getState("fireworks")
         for i = 1, #fireworks do
-            fireworks[i]:Move(distance, 500)
+            fireworks[i]:move(distance, 500)
         end
     end
 
@@ -268,36 +300,39 @@ function Character:moveElements()
 
         local unitsToMove = 120;
         if (releaseSpeed > 500) then
-            unitsToMove = unitsToMove * 2;
+            unitsToMove = unitsToMove * 2
         elseif (releaseSpeed > 450) then
-            unitsToMove = unitsToMove * 1.5;
+            unitsToMove = unitsToMove * 1.5
         elseif (releaseSpeed > 400) then
-            unitsToMove = unitsToMove * 1.25;
+            unitsToMove = unitsToMove * 1.25
         elseif (releaseSpeed > 350) then
-            unitsToMove = unitsToMove * 1.1;
+            unitsToMove = unitsToMove * 1.1
         end 
 
-        local magnifier = 1;
+        local magnifier = 1
         if (releaseAngle > -1.65 and releaseAngle < -1.35) then -- great release
-            magnifier = 2;
+            magnifier = 2
         elseif (releaseAngle > -1.8 and releaseAngle < -1.2) then -- good release
-            magnifier = 1.5;
+            magnifier = 1.5
         else -- fair release
             -- do nothing
         end
 
-        unitsToMove = unitsToMove * magnifier;
+        unitsToMove = unitsToMove * magnifier
+        local ms = 350 * magnifier
 
         local skyLanterns = gs:getState("skyLanterns")
         for i = 1, #skyLanterns do
-            skyLanterns[i]:Move(unitsToMove, 350 * magnifier, true)
+            skyLanterns[i]:move(unitsToMove, ms, true)
         end
+
 
         local fireworks = gs:getState("fireworks")
         for i = 1, #fireworks do
-            fireworks[i]:Move(unitsToMove, 350 * magnifier)
+            fireworks[i]:move(unitsToMove, ms)
         end
 
+        
         local buildings = gs:getState("buildings")
         local buildingsToKeep = {}
         local buildingsToRemove = {}
@@ -305,7 +340,7 @@ function Character:moveElements()
 
         for i = 1, #buildings do
             local building = buildings[i]
-            local keep = building:Move(unitsToMove, 350 * magnifier)
+            local keep = building:move(unitsToMove, ms)
             if (keep) then
                 gs:addTableMember("buildings", building)
             else
@@ -313,7 +348,8 @@ function Character:moveElements()
             end
         end
 
-        if #gs:getState("buildings") == 4 then
+        buildings = gs:getState("buildings")
+        if #buildings > 0 and #buildings <= 4 then
             SkyLantern.startSkyLanternTimerGenerator()
             -- Firework.startFireworkTimerGenerator()
         end
@@ -322,7 +358,7 @@ function Character:moveElements()
             local building = buildingsToRemove[i]._obj
             local anchors = building.anchors
             for i = 1, #anchors do
-                anchors[i]._obj:removeSelf()
+                anchors[i]:delete()
             end
             building.anchors = {}
             building:removeSelf()
@@ -330,6 +366,35 @@ function Character:moveElements()
 
         local mountains = gs:getState("mountains")
         transition.to(mountains, {time = ms, y = mountains.y + unitsToMove * 0.05})
+
+        timer.performWithDelay( ms, function()
+            if (character.swingable ~= nil and character.swingable.y > display.contentHeight - 150) then
+                
+                -- move the objects back to the original position
+
+                local unitsToMove = math.abs(character.swingable.y - (display.contentHeight - 150)) * -1
+                -- local ms = 100
+
+                local skyLanterns = gs:getState("skyLanterns")
+                for i = 1, #skyLanterns do
+                    skyLanterns[i]:move(unitsToMove, ms, true)
+                end
+
+                local fireworks = gs:getState("fireworks")
+                for i = 1, #fireworks do
+                    fireworks[i]:move(unitsToMove, ms)
+                end
+
+                local buildings = gs:getState("buildings")
+                for i = 1, #buildings do
+                    local building = buildings[i]
+                    building:move(unitsToMove, ms)
+                end
+
+                local mountains = gs:getState("mountains")
+                transition.to(mountains, {time = ms, y = mountains.y + unitsToMove * 0.05})
+            end
+        end, 1 )
     end
 end
 
@@ -347,6 +412,8 @@ function Character:isOffScreen()
     local edgePadding = 100
 
     if (character.swinging) then return false end
+
+    if character.width == nil then return true end
     
     -- Check off left
     if (character.x + character.width * 0.5) < 0 - edgePadding then

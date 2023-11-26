@@ -18,20 +18,6 @@ local right = display.contentWidth
 local lastLeftAnchor
 
 local buildingConfigs = {
-    -- { fileName = "poc1.png", w = 164, h = 290, p = 10, anchorConfigs = { 
-    --     {x = 90, y = 98 }, 
-    --     {x = 78, y = 136 }, 
-    --     {x = 70, y = 171 }, 
-    --     {x = 63, y = 206 }, 
-    --     {x = 55, y = 240 }, 
-    --     {x = 46, y = 273 }, 
-    -- } },
-    -- { fileName = "poc.png", w = 157, h = 188, p = 30, anchorConfigs = {
-    --     { x = 107, y = 77 },
-    --     { x = 90, y = 114 },
-    --     { x = 80, y = 150 },
-    --     { x = 30, y = 187 },
-    -- } }
     { fileName = "building1.png", w = 200, h = 800, p = 0, anchorConfigs = { 
         left = {
             { x = 95, y = 241 },
@@ -83,17 +69,19 @@ function Building:new( side, y, bcIndex )
 end
 
 function Building:addAnchor(sideOfScreen, buildingBottom, ac)
+    local building = self._obj
+
     local x = ac.x
     if (sideOfScreen == right) then
         x = x*-1
     end
     local anchorX = sideOfScreen + x
     local anchorY = buildingBottom - ac.y
-    local anchor = Anchor:new( anchorX, anchorY )
+    local anchor = Anchor:new( anchorX, anchorY, building.id )
     table.insert(self._obj.anchors, anchor)
 end
 
-function Building:Move(unitsToMove, ms)
+function Building:move(unitsToMove, ms)
     local building = self._obj
 
     if (building.y > display.contentHeight + building.height) then
@@ -104,13 +92,17 @@ function Building:Move(unitsToMove, ms)
 
     local anchors = building.anchors
     for i = 1, #anchors do
-        anchors[i]:Move(unitsToMove, ms)
+        anchors[i]:move(unitsToMove, ms)
     end
 
     return true
 end
 
-function Building.initTwo( y, bcIndex )
+function Building.initTwo( y, resetBuildingId, bcIndex )
+    if resetBuildingId then
+        id = 1
+    end
+
     local bcIndex = bcIndex or 1
     local building = Building:new( 0, y )
     gs:addTableMember("buildings", building, bcIndex)

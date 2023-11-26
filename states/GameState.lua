@@ -1,5 +1,6 @@
 local state = {
     gameGroup = nil,
+    topGroup = nil,
     mountains = nil,
     anchors = {},
     buildings = {},

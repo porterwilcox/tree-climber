@@ -26,6 +26,9 @@ local backgroundGroup
 local uiGroup
 local gameGroup
 local characterGroup
+local topGroup
+
+local startSwing
 
 local gs = GameState:new()
 
@@ -35,17 +38,39 @@ local function initMountains()
 	local mountains = display.newRect( backgroundGroup, display.contentCenterX, display.contentCenterY, 478, 800 )
 	mountains.fill = {
 		type = "image",
-		filename = "assets/images/mountains.png"
+		-- filename = "assets/images/mountains.png"
+		filename = "assets/images/ai-background-3.png"
 	}
 	gs:setState("mountains", mountains)
 end
 
 local function initBuildings()
-	Building.initTwo(display.contentHeight * 2)
-	Building.initTwo(display.contentHeight)
-	Building.initTwo(0)
-	Building.initTwo(-display.contentHeight)
-	Building.initTwo(-display.contentHeight * 2)
+	Building.initTwo(display.contentHeight * 2, true) -- allows for navigating downward one screen length
+	Building.initTwo(display.contentHeight) -- starting buildings
+	Building.initTwo(0) -- 2nd set
+	Building.initTwo(-display.contentHeight) -- 3rd set
+	Building.initTwo(-display.contentHeight * 2) -- 4th set
+	Building.initTwo(-display.contentHeight * 3) -- 5th set
+	Building.initTwo(-display.contentHeight * 4) -- 6th set
+	Building.initTwo(-display.contentHeight * 5) -- 7th set
+	Building.initTwo(-display.contentHeight * 6) -- 8th set
+	Building.initTwo(-display.contentHeight * 7) -- 9th set
+	Building.initTwo(-display.contentHeight * 8) -- 10th set
+	Building.initTwo(-display.contentHeight * 9) -- 11th set
+	Building.initTwo(-display.contentHeight * 10) -- 12th set
+	Building.initTwo(-display.contentHeight * 11) -- 13th set
+	Building.initTwo(-display.contentHeight * 12) -- 14th set
+	Building.initTwo(-display.contentHeight * 13) -- 15th set
+	Building.initTwo(-display.contentHeight * 14) -- 16th set
+	Building.initTwo(-display.contentHeight * 15) -- 17th set
+	Building.initTwo(-display.contentHeight * 16) -- 18th set
+	Building.initTwo(-display.contentHeight * 17) -- 19th set
+	Building.initTwo(-display.contentHeight * 18) -- 20th set
+	Building.initTwo(-display.contentHeight * 19) -- 21st set
+	Building.initTwo(-display.contentHeight * 20) -- 22nd set
+	Building.initTwo(-display.contentHeight * 21) -- 23rd set
+	Building.initTwo(-display.contentHeight * 22) -- 24th set
+	Building.initTwo(-display.contentHeight * 23) -- 25th set
 end
 
 local function initCharacter()
@@ -53,44 +78,79 @@ local function initCharacter()
 	gs:setState("character", character)
 end
 
+local gameLives = 2
 local function restart()
-	transition.cancelAll();
+	local character = gs:getState("character")._obj
+	if character.swinging then return end
 
-	gs:getState("mountains"):removeSelf()
-	initMountains()
+	Runtime:removeEventListener("touch", startSwing)
 
-	Firework.clearFireworkTimerGenerator()
-	local fireworks = gs:getState("fireworks")
-	while #fireworks > 0 do
-		fireworks[#fireworks]:Delete()
+	if character.removeSelf then
+		character:removeSelf()
 	end
 
-	SkyLantern.clearSkyLanternTimerGenerator()
-	local skyLanterns = gs:getState("skyLanterns")
-	while #skyLanterns > 0 do
-		skyLanterns[#skyLanterns]:Delete()
-	end
+	gameLives = gameLives - 1
 
-	-- remove all the buildings
-	local buildings = gs:getState("buildings")
-	for i = 1, #buildings do
-		-- remove anchors
-		local anchors = buildings[i]._obj.anchors
-		for j = 1, #anchors do
-			anchors[j]._obj:removeSelf()
+	if gameLives > 0 then	
+		transition.pauseAll()
+	
+		local overlay = display.newRect( topGroup, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight )
+    	overlay:setFillColor(0, 0, 0, 0.7) -- semi-transparent black overlay
+
+		local continueButton = display.newText( topGroup, "Continue", display.contentCenterX, display.contentCenterY + 100, native.systemFont, 44)
+		continueButton:setFillColor(1, 1, 1)
+		continueButton:addEventListener("tap", function()
+			overlay:removeSelf()
+			continueButton:removeSelf()
+			transition.resumeAll()
+			if Firework.clearFireworkTimerGenerator() then
+				Firework.startFireworkTimerGenerator()
+			end
+			Runtime:addEventListener("touch", startSwing)
+			initCharacter()
+		end)
+
+		return 
+	end
+	
+	gameLives = 2
+	composer.gotoScene( "menu", { time=800, effect="crossFade" } )
+
+	timer.performWithDelay( 800, function()
+		transition.cancelAll();
+
+		gs:getState("mountains"):removeSelf()
+
+		Firework.clearFireworkTimerGenerator()
+		local fireworks = gs:getState("fireworks")
+		while #fireworks > 0 do
+			fireworks[#fireworks]:delete()
 		end
-		buildings[i]._obj:removeSelf()
-	end
-	gs:setState("buildings", {})
-	initBuildings()
 
-	gs:getState("character")._obj:removeSelf()
-	initCharacter()
+		SkyLantern.clearSkyLanternTimerGenerator()
+		local skyLanterns = gs:getState("skyLanterns")
+		while #skyLanterns > 0 do
+			skyLanterns[#skyLanterns]:delete()
+		end
+
+		-- remove all the buildings
+		local buildings = gs:getState("buildings")
+		for i = 1, #buildings do
+			-- remove anchors
+			local anchors = buildings[i]._obj.anchors
+			for j = 1, #anchors do
+				anchors[j]:delete()
+			end
+			buildings[i]._obj:removeSelf()
+		end
+		gs:setState("buildings", {})
+	end, 1)
 end
 
 local function monitorFlight()
 	flightMonitorTimerId = timer.performWithDelay( 25, function()
-		if (gs:getState("character"):isOffScreen()) then
+		local character = gs:getState("character")
+		if (character ~= nil and character:isOffScreen()) then
 			timer.cancel(flightMonitorTimerId) 
 			flightMonitorTimerId = nil
 			timer.performWithDelay( 500, restart, 1 )
@@ -105,10 +165,10 @@ local function flightEnd()
 	end
 end
 
-local function startSwing(event)
+startSwing = function(event)
     if event.phase == "began" then
 		flightEnd()
-		gs:getState("character"):swing()
+		gs:getState("character"):swing() --ChatGPT Please Help Here! why is character nil on this line after restart? specifically when navigating back to the game from the menu after losing a first game? why is this method even running?
 	elseif event.phase == "moved" then
 		gs:getState("character"):setLinearDamping(event.x)
     elseif event.phase == "ended" then
@@ -116,7 +176,6 @@ local function startSwing(event)
 		monitorFlight()
     end
 end
-Runtime:addEventListener("touch", startSwing)
 
 -- -----------------------------------------------------------------------------------
 -- Scene event functions
@@ -147,8 +206,9 @@ function scene:create( event )
 	characterGroup = display.newGroup()
 	sceneGroup:insert(characterGroup)
 
-	initMountains()
-	initBuildings()
+	topGroup = display.newGroup()
+	gs:setState("topGroup", topGroup)
+	sceneGroup:insert(topGroup)
 end
 
 
@@ -159,12 +219,19 @@ function scene:show( event )
 
 	if ( phase == "will" ) then
 		-- Code here runs when the scene is still off screen (but is about to come on screen)
-		
+
+		local fireworks = gs:getState("fireworks")
+		while #fireworks > 0 do
+			fireworks[#fireworks]:delete()
+		end
+		initMountains()
+		initBuildings()
+
 	elseif ( phase == "did" ) then
 		-- Code here runs when the scene is entirely on screen
 
-		initCharacter()
-		Firework:new( display.contentCenterX, display.contentCenterY )
+		timer.performWithDelay( 250, initCharacter, 1 )
+		Runtime:addEventListener("touch", startSwing)
 	end
 end
 

@@ -78,17 +78,21 @@ function Firework:new( x, y )
     firework.name = "firework"
     id = id + 1
     local self = setmetatable({ _obj = firework }, Firework)
-    self:Animate()
+    self:animate()
     return self
 end
 
-function Firework:Move(unitsToMove, ms)
+function Firework:move(unitsToMove, ms)
     local firework = self._obj
 
-    transition.to(firework, {time = ms, y = firework.y + unitsToMove, transition = easing.outSine })
+    transition.to(firework, {time = ms, y = firework.y + unitsToMove, transition = easing.outSine, onComplete = function()
+        if firework and not firework.deleted and self:isOffScreen() then
+            self:delete()
+        end
+    end })
 end
 
-function Firework:Animate()
+function Firework:animate()
     local firework = self._obj
 
     -- Function to create strobing effect
@@ -103,7 +107,7 @@ function Firework:Animate()
         return timer.performWithDelay(math.random(80, 150), strobe, duration / 50)
     end
 
-    local color = math.random(1, 2)
+    local color = math.random(1, 10) % 9 == 0 and 2 or 1
 
     -- Start animation with strobing
     firework.fill = fireworksImages[color][1]
@@ -141,7 +145,7 @@ function Firework:Animate()
                             if (character._obj.swingable == firework) then
                                 character:release()
                             end
-                            self:Delete()
+                            self:delete()
                         end
                     })
                 end
@@ -150,8 +154,9 @@ function Firework:Animate()
     })
 end
 
-function Firework:Delete()
+function Firework:delete()
     local obj = self._obj
+    local foo
     if obj.deleted then return end
 
     local character = gs:getState("character")._obj
@@ -165,11 +170,40 @@ function Firework:Delete()
 end
 
 function initFirework()
+    local fireworks = gs:getState("fireworks")
+    if #fireworks > 4 then return end
+
     local x = math.random(50, 310)
-    local y = highestFirework ~= nil and not highestFirework.deleted and highestFirework.y - math.random(175, 300) or display.contentCenterY
+    local y = highestFirework ~= nil and not highestFirework.deleted and highestFirework.y - math.random(175, 250) or display.contentCenterY
     local firework = Firework:new( x, y )
     table.insert(gs:getState("fireworks"), firework)
     highestFirework = firework._obj
+end
+
+function Firework:isOffScreen()
+    local firework = self._obj
+
+    -- -- Check off left
+    -- if (firework.x + firework.width * 0.5) < 0 then
+    --     return true
+    -- end
+
+    -- -- Check off right
+    -- if (firework.x - firework.width * 0.5) > display.contentWidth then
+    --     return true
+    -- end
+
+    -- Check off top
+    if (firework.y + firework.height * 0.5) < 0 then
+        return true
+    end
+
+    -- Check off bottom
+    if (firework.y - firework.height * 0.5) > display.contentHeight then
+        return true
+    end
+
+    return false
 end
 
 function Firework.startFireworkTimerGenerator()
@@ -189,7 +223,18 @@ function Firework.clearFireworkTimerGenerator()
 	if fireworkTimer ~= nil then 
 		timer.cancel(fireworkTimer) 
 		gs:setState("fireworkGeneratorTimerId", nil)
+        local fireworks = gs:getState("fireworks")
+        for i = 1, #fireworks do 
+            if fireworks[i] and not fireworks[i]._obj.deleted then
+                if fireworks[i]:isOffScreen() then
+                    fireworks[i]:delete()
+                end
+            end
+        end
+        
+        return true
 	end
+    return false
 end
 
 return Firework

@@ -40,11 +40,16 @@ function SkyLantern:new( x, y )
     skyLantern.falling = false
 
     local color = math.random(1, 10)
-    if color <= 6 then 
-        skyLantern.fill = skyLanternRed
-    elseif color <= 9 then
+    -- if color <= 6 then 
+    --     skyLantern.fill = skyLanternRed
+    -- elseif color <= 9 then
+    --     skyLantern.fill = skyLanternYellow
+    -- else
+    --     skyLantern.fill = skyLanternBlue
+    -- end
+    if color <= 8 then 
         skyLantern.fill = skyLanternYellow
-    else
+    elseif color > 8 then
         skyLantern.fill = skyLanternBlue
     end
 
@@ -53,7 +58,7 @@ function SkyLantern:new( x, y )
     return self
 end
 
-function SkyLantern:Move(unitsToMove, ms, fractionalMovement)
+function SkyLantern:move(unitsToMove, ms, fractionalMovement)
     local obj = self._obj
     if obj == nil or obj.deleted then return end
 
@@ -81,7 +86,7 @@ function SkyLantern:Move(unitsToMove, ms, fractionalMovement)
                 if (character._obj.swingable == swingable) then
                     character:release()
                 end
-                self:Delete()
+                self:delete()
             end })
         end, 1)
     else
@@ -94,7 +99,7 @@ function SkyLantern:Move(unitsToMove, ms, fractionalMovement)
     end
 end
 
-function SkyLantern:Delete()
+function SkyLantern:delete()
     local obj = self._obj
     if obj.deleted then return end
 
@@ -165,7 +170,7 @@ function SkyLantern.initSkyLanterns()
         obj.deletionTimerId = timer.performWithDelay(5000, function() 
             local character = gs:getState("character")._obj
             if skyLantern:isOffScreen() then
-                skyLantern:Delete()
+                skyLantern:delete()
             end
         end, 0)
     end
